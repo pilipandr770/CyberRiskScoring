@@ -4,6 +4,7 @@
 <h1>Neue Kundenprüfung</h1>
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 <form method="post" action="/intake/new" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
   <fieldset>
     <legend>Unternehmensdaten</legend>

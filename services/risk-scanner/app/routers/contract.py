@@ -10,6 +10,7 @@ from app.pdf_export import markdown_to_pdf
 from app.scoring import risk_formula
 from app.scoring.contract_document import render_contract_markdown
 from app.scoring.insurance_document import check_obliegenheiten, default_contract_fields
+from app.security import get_csrf_token, verify_csrf
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -52,13 +53,17 @@ async def contract_form(scan_id: str, request: Request, db: Session = Depends(ge
 
     return templates.TemplateResponse(
         "contract_form.html",
-        {"request": request, "agent": agent, "scan": scan, "fields": fields, "obliegenheiten": obliegenheiten},
+        {
+            "request": request, "agent": agent, "scan": scan, "fields": fields, "obliegenheiten": obliegenheiten,
+            "csrf_token": get_csrf_token(request),
+        },
     )
 
 
 @router.post("/report/{scan_id}/contract/pdf")
 async def generate_contract_pdf(
     scan_id: str, request: Request, db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
     insurer_name: str = Form(...),
     policy_start: str = Form(...),
     policy_term_years: int = Form(1),
@@ -75,6 +80,7 @@ async def generate_contract_pdf(
     payment_frequency: str = Form("jährlich"),
 ):
     scan = _get_owned_scan(scan_id, request, db)
+    verify_csrf(request, csrf_token)
     assessment = scan.assessment
 
     fields = {

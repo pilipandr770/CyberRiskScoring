@@ -9,6 +9,7 @@ from app.auth import get_current_agent
 from app.db import get_db
 from app.m3_provisioning import provision
 from app.models import ScanResult
+from app.security import get_csrf_token, verify_csrf
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -26,18 +27,23 @@ def _get_owned_scan(scan_id: str, request: Request, db: Session) -> ScanResult:
 async def decision_form(scan_id: str, request: Request, db: Session = Depends(get_db)):
     agent = get_current_agent(request, db)
     scan = _get_owned_scan(scan_id, request, db)
-    return templates.TemplateResponse("decision_form.html", {"request": request, "agent": agent, "scan": scan})
+    return templates.TemplateResponse(
+        "decision_form.html",
+        {"request": request, "agent": agent, "scan": scan, "csrf_token": get_csrf_token(request)},
+    )
 
 
 @router.post("/report/{scan_id}/decision")
 async def submit_decision(
     scan_id: str, request: Request, db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
     decision: str = Form(...),           # accepted / adjusted / rejected
     final_premium_eur: str = Form(""),
     notes: str = Form(""),
 ):
     agent = get_current_agent(request, db)
     scan = _get_owned_scan(scan_id, request, db)
+    verify_csrf(request, csrf_token)
 
     scan.decision_status = decision
     scan.decision_notes = notes or None

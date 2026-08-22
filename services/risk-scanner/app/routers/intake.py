@@ -9,6 +9,7 @@ from app.auth import get_current_agent
 from app.db import get_db
 from app.models import AgentUser, ClientAssessment, ScanResult
 from app.scoring.pipeline import run_scan
+from app.security import get_csrf_token, verify_csrf
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -52,7 +53,11 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 async def intake_form(request: Request, db: Session = Depends(get_db)):
     agent = get_current_agent(request, db)
     return templates.TemplateResponse(
-        "intake_form.html", {"request": request, "agent": agent, "industries": INDUSTRIES, "error": None}
+        "intake_form.html",
+        {
+            "request": request, "agent": agent, "industries": INDUSTRIES, "error": None,
+            "csrf_token": get_csrf_token(request),
+        },
     )
 
 
@@ -60,6 +65,7 @@ async def intake_form(request: Request, db: Session = Depends(get_db)):
 async def intake_submit(
     request: Request,
     db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
     company_name: str = Form(...),
     hrb_number: str = Form(""),
     contact_email: str = Form(""),
@@ -76,6 +82,7 @@ async def intake_submit(
     consent_confirmed: str = Form(""),
 ):
     agent = get_current_agent(request, db)
+    verify_csrf(request, csrf_token)
 
     if consent_confirmed != "yes":
         return templates.TemplateResponse(
@@ -83,6 +90,7 @@ async def intake_submit(
             {
                 "request": request, "agent": agent, "industries": INDUSTRIES,
                 "error": "Ohne bestätigte schriftliche Zustimmung des Kunden kann kein Scan gestartet werden.",
+                "csrf_token": get_csrf_token(request),
             },
         )
 

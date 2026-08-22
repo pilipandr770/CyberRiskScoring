@@ -26,6 +26,7 @@
 {% endif %}
 
 <form method="post" action="/report/{{ scan.id }}/decision" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <fieldset>
     <legend>Entscheidung</legend>
     <label>Status</label>

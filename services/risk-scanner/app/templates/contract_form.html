@@ -5,6 +5,7 @@
 <p class="hint">Vorschlagswerte, automatisch aus der Risikoeinschätzung berechnet. Vor dem Drucken/Erzeugen anpassen — Basis: AVB Cyber (GDV-Musterbedingungen, Stand Februar 2024).</p>
 
 <form method="post" action="/report/{{ scan.id }}/contract/pdf" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
   <fieldset>
     <legend>Vertragsparteien</legend>

@@ -35,4 +35,7 @@ COPY . .
 RUN mkdir -p /app/data
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --proxy-headers/--forwarded-allow-ips trust X-Forwarded-For from the
+# immediate peer (Traefik on the docker network) so request.client.host —
+# and CSRF/rate-limit IP detection — sees the real client, not Traefik's IP.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]

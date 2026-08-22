@@ -5,6 +5,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/data/risk_scanner.db")
 SESSION_SECRET = os.getenv("SESSION_SECRET", "dev-only-change-me")
 
+# Secure by default (cookie only sent by the browser over https) since
+# production always sits behind Traefik/Cloudflare TLS. Local docker-compose
+# dev (plain http://localhost:8000) must explicitly opt out via .env — see
+# .env.example.
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
+SESSION_MAX_AGE_SECONDS = int(os.getenv("SESSION_MAX_AGE_SECONDS", str(8 * 3600)))
+
+# Login brute-force throttling (slowapi, keyed by client IP).
+LOGIN_RATE_LIMIT = os.getenv("LOGIN_RATE_LIMIT", "10/minute")
+
 # Machine API — replaces the old external "black box" pentesting microservice
 # that Module 3 (nis2.store) used to call. Same request/response contract
 # (POST /api/audit, GET /api/audit/{id}, .../findings) so their existing
