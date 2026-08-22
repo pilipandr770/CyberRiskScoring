@@ -4,7 +4,7 @@ router calls after a client assessment is submitted."""
 
 import json
 
-from app.config import BASE_LOSS_EUR
+from app.config import BASE_LOSS_EUR, THIRD_PARTY_EDGE_SERVER_BANNERS
 from app.scoring import (
     client_report_generator, cve_dataset, cve_enrich, cvss_calc, nmap_scan,
     nuclei_scan, passive_recon, regulatory_check, report_generator,
@@ -126,7 +126,7 @@ async def _findings_from_recon(recon: dict) -> list[dict]:
             })
 
         server = probe.get("server")
-        if server:
+        if server and server.lower().strip() not in THIRD_PARTY_EDGE_SERVER_BANNERS:
             matched = await _matched_cve_findings(server, None, "internet_facing_generic", probe["host"])
             findings.extend(matched)
 

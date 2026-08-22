@@ -142,6 +142,23 @@ NUCLEI_SEVERITIES = "info,low,medium,high,critical"
 NUCLEI_TIMEOUT_SECONDS = int(os.getenv("NUCLEI_TIMEOUT_SECONDS", "300"))
 NUCLEI_RATE_LIMIT = int(os.getenv("NUCLEI_RATE_LIMIT", "150"))
 
+# Server-header values known to be third-party CDN/WAF/reverse-proxy edges
+# (Cloudflare, CloudFront, Akamai, Fastly, Sucuri, Incapsula/Imperva) rather
+# than the client's own origin server. These banners carry no version and
+# the client can't patch them (the vendor manages and patches their own
+# edge) — matching them against the CVE cache by bare product name produced
+# false positives (e.g. "Server: cloudflare" substring-matching unrelated
+# CVEs from completely different Cloudflare-branded products). See
+# pipeline.py's _findings_from_recon.
+THIRD_PARTY_EDGE_SERVER_BANNERS = {
+    "cloudflare", "cloudflare-nginx",
+    "cloudfront",
+    "akamaighost", "akamai",
+    "fastly", "fastly-varnish",
+    "sucuri/cloudproxy",
+    "imperva", "incapsula",
+}
+
 # Keyword patterns used to classify Shodan products into the IoT/OT/POS bucket.
 IOT_OT_KEYWORDS = [
     "hikvision", "dahua", "axis", "ip camera", "ipcamera", "dvr", "nvr",
