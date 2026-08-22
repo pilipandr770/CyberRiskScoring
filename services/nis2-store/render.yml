@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: nis2-compliance
+    env: python
+    region: frankfurt
+    plan: starter
+    buildCommand: pip install -r requirements.txt && flask db upgrade
+    startCommand: gunicorn wsgi:app --workers 2 --bind 0.0.0.0:$PORT --timeout 120
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nis2-db
+          property: connectionString
+      # AI provider: 'mistral' (EU data residency) or 'anthropic'
+      - key: LLM_PROVIDER
+        value: mistral
+      - key: MISTRAL_API_KEY
+        sync: false
+      # Optional automatic fallback if the primary provider errors
+      - key: LLM_FALLBACK_PROVIDER
+        value: anthropic
+      # Kept as optional fallback (set LLM_PROVIDER=anthropic to use)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Shared rate-limit store across workers (e.g. redis://...). Optional.
+      - key: RATELIMIT_STORAGE_URI
+        sync: false
+      - key: SMTP_SERVER
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: MAIL_DEFAULT_SENDER
+        sync: false
+      - key: SITE_BASE_URL
+        sync: false
+      - key: STRIPE_PUBLIC_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_BASIC
+        sync: false
+      - key: STRIPE_PRICE_PROFESSIONAL
+        sync: false
+
+databases:
+  - name: nis2-db
+    databaseName: nis2
+    user: nis2_user
+    region: frankfurt
+    plan: starter

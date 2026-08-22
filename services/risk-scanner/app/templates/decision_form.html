@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Entscheidung{% endblock %}
+{% block content %}
+<h1>Underwriter-Entscheidung — {{ scan.assessment.company_name }}</h1>
+
+<div class="card summary">
+  <div class="metrics">
+    <div><span class="label">Vorgeschlagene Prämien-Spanne</span><span class="value">€{{ "{:,.0f}".format(scan.premium_range_low_eur).replace(",", ".") }} – €{{ "{:,.0f}".format(scan.premium_range_high_eur).replace(",", ".") }}</span></div>
+    <div><span class="label">Aktueller Status</span><span class="value">{{ scan.decision_status or "pending" }}</span></div>
+    {% if scan.decision_premium_eur %}
+    <div><span class="label">Festgelegte Prämie</span><span class="value">€{{ "{:,.0f}".format(scan.decision_premium_eur).replace(",", ".") }}</span></div>
+    {% endif %}
+  </div>
+</div>
+
+{% if scan.decision_status in ("accepted", "adjusted") %}
+<div class="card">
+  <p><strong>Entschieden von:</strong> {{ scan.decided_by }} am {{ scan.decided_at.strftime("%Y-%m-%d %H:%M") if scan.decided_at }}</p>
+  <p><strong>M3-Provisionierung:</strong>
+    {% if scan.m3_provisioned == "yes" %}✅ erfolgreich ({{ scan.m3_provisioned_at.strftime("%Y-%m-%d %H:%M") if scan.m3_provisioned_at }})
+    {% elif scan.m3_provisioned == "failed" %}❌ fehlgeschlagen — {{ scan.m3_provision_error }}
+    {% else %}nicht ausgelöst (M3_PROVISIONING_WEBHOOK_URL nicht konfiguriert oder Entscheidung ≠ "accepted"){% endif %}
+  </p>
+  {% if scan.decision_notes %}<p><strong>Notizen:</strong> {{ scan.decision_notes }}</p>{% endif %}
+</div>
+{% endif %}
+
+<form method="post" action="/report/{{ scan.id }}/decision" class="card">
+  <fieldset>
+    <legend>Entscheidung</legend>
+    <label>Status</label>
+    <select name="decision">
+      <option value="accepted">Angenommen (Prämie wie vorgeschlagen)</option>
+      <option value="adjusted">Angepasst (abweichende Prämie)</option>
+      <option value="rejected">Abgelehnt</option>
+    </select>
+    <label>Finale Jahresprämie (EUR) — nur bei "Angenommen"/"Angepasst"</label>
+    <input type="text" name="final_premium_eur" placeholder="{{ scan.premium_range_low_eur|int }}">
+    <label>Notizen</label>
+    <input type="text" name="notes" placeholder="optional">
+  </fieldset>
+  <button type="submit">Entscheidung speichern</button>
+</form>
+
+<p class="hint">"Angenommen" löst — sofern konfiguriert — die automatische Provisionierung des Kundenkontos auf der Post-Contract-Plattform (Modul 3) aus.</p>
+{% endblock %}

@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Risiko bearbeiten' if risk else 'Risiko erfassen' }} — NIS2{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:860px">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('nis2.dashboard') }}">NIS2</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('nis2.risk_list') }}">Risikoregister</a></li>
+      <li class="breadcrumb-item active">{{ 'Bearbeiten' if risk else 'Neu' }}</li>
+    </ol>
+  </nav>
+
+  <h1 class="h3 mb-4">{{ 'Risiko bearbeiten' if risk else 'Neues Risiko erfassen' }}</h1>
+
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="row g-4">
+
+      {# Identification #}
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-exclamation-triangle me-1"></i> Bedrohung / Risikobeschreibung
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Titel <span class="text-danger">*</span></label>
+                <input type="text" name="title" class="form-control" required
+                       value="{{ risk.title if risk else '' }}"
+                       placeholder="z.B. Ransomware-Angriff auf Produktionssysteme">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Kategorie</label>
+                <select name="category" class="form-select">
+                  {% for val, lbl in categories %}
+                    <option value="{{ val }}"
+                      {{ 'selected' if risk and risk.category == val else '' }}>
+                      {{ lbl }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">NIS2-Bezug</label>
+                <input type="text" name="nis2_ref" class="form-control"
+                       value="{{ risk.nis2_ref or '' }}"
+                       placeholder="z.B. §30 Nr. 1, 2, 5">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Beschreibung</label>
+                <textarea name="description" class="form-control" rows="3"
+                          placeholder="Bedrohungsszenario, mögliche Angriffswege, Kontext">{{ risk.description or '' }}</textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Betroffenes System / Asset (Freitext)</label>
+                <input type="text" name="affected_asset" class="form-control"
+                       value="{{ risk.affected_asset or '' }}"
+                       placeholder="z.B. ERP-System, VPN-Gateway">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">IT-Asset aus Inventar</label>
+                <select name="asset_id" class="form-select">
+                  <option value="">— kein Asset gewählt —</option>
+                  {% for a in assets %}
+                    <option value="{{ a.id }}"
+                      {{ 'selected' if risk and risk.asset_id == a.id else '' }}>
+                      {{ a.name }} ({{ a.category_label }})
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Risk scoring #}
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-calculator me-1"></i> Brutto-Risikobewertung
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Eintrittswahrscheinlichkeit (1–5)</label>
+              <select name="likelihood" class="form-select" id="likelihood">
+                {% for val, lbl in likelihood_labels.items() %}
+                  <option value="{{ val }}"
+                    {{ 'selected' if risk and risk.likelihood == val else ('selected' if not risk and val == 3 else '') }}>
+                    {{ val }} — {{ lbl }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Auswirkung / Impact (1–5)</label>
+              <select name="impact" class="form-select" id="impact">
+                {% for val, lbl in impact_labels.items() %}
+                  <option value="{{ val }}"
+                    {{ 'selected' if risk and risk.impact == val else ('selected' if not risk and val == 3 else '') }}>
+                    {{ val }} — {{ lbl }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="alert alert-secondary py-2 text-center mb-0">
+              Risiko-Score: <strong id="score_display">{{ (risk.risk_score) if risk else 9 }}</strong>
+              <span id="level_display" class="ms-2 badge bg-warning text-dark">{{ risk.risk_level | upper if risk else 'HOCH' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Residual risk #}
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-shield-half me-1"></i> Netto-Risiko (nach Maßnahmen)
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Residual-Wahrscheinlichkeit (1–5)</label>
+              <select name="residual_likelihood" class="form-select">
+                <option value="">— nicht bewertet —</option>
+                {% for val, lbl in likelihood_labels.items() %}
+                  <option value="{{ val }}"
+                    {{ 'selected' if risk and risk.residual_likelihood == val else '' }}>
+                    {{ val }} — {{ lbl }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Residual-Auswirkung (1–5)</label>
+              <select name="residual_impact" class="form-select">
+                <option value="">— nicht bewertet —</option>
+                {% for val, lbl in impact_labels.items() %}
+                  <option value="{{ val }}"
+                    {{ 'selected' if risk and risk.residual_impact == val else '' }}>
+                    {{ val }} — {{ lbl }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Treatment #}
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-tools me-1"></i> Risikobehandlung
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Behandlungsart</label>
+                <select name="treatment_type" class="form-select">
+                  {% for val, lbl in treatment_types %}
+                    <option value="{{ val }}"
+                      {{ 'selected' if risk and risk.treatment_type == val else ('selected' if not risk and val == 'mitigate' else '') }}>
+                      {{ lbl }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Risikoverantwortlicher</label>
+                <input type="text" name="risk_owner" class="form-control"
+                       value="{{ risk.risk_owner or '' }}"
+                       placeholder="Name / Rolle">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Nächste Überprüfung</label>
+                <input type="date" name="review_date" class="form-control"
+                       value="{{ risk.review_date.isoformat() if risk and risk.review_date else '' }}">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Maßnahmenplan / Behandlungsbeschreibung</label>
+                <textarea name="treatment_plan" class="form-control" rows="3"
+                          placeholder="Welche Maßnahmen werden ergriffen? Zeitplan, Verantwortlicher...">{{ risk.treatment_plan or '' }}</textarea>
+              </div>
+              {% if risk %}
+              <div class="col-md-4">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                  {% for val, lbl in [('open','Offen'),('in_treatment','In Behandlung'),('accepted','Akzeptiert'),('mitigated','Mitigiert')] %}
+                    <option value="{{ val }}" {{ 'selected' if risk.status == val else '' }}>
+                      {{ lbl }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Buttons #}
+      <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>
+          {{ 'Änderungen speichern' if risk else 'Risiko erfassen' }}
+        </button>
+        <a href="{{ url_for('nis2.risk_list') }}" class="btn btn-outline-secondary">Abbrechen</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+const LEVELS = [
+  [0,0,0,0,0],
+  [0,'low','low','medium','medium'],
+  [0,'low','medium','medium','high'],
+  [0,'medium','medium','high','high'],
+  [0,'medium','high','high','critical'],
+  [0,'high','high','critical','critical'],
+];
+const COLOR = {low:'success',medium:'warning text-dark',high:'warning text-dark',critical:'danger'};
+const LABEL = {low:'NIEDRIG',medium:'MITTEL',high:'HOCH',critical:'KRITISCH'};
+
+function updateScore() {
+  const l = +document.getElementById('likelihood').value;
+  const i = +document.getElementById('impact').value;
+  const score = l * i;
+  const level = score >= 15 ? 'critical' : score >= 9 ? 'high' : score >= 4 ? 'medium' : 'low';
+  document.getElementById('score_display').textContent = score;
+  const badge = document.getElementById('level_display');
+  badge.className = 'ms-2 badge bg-' + COLOR[level];
+  badge.textContent = LABEL[level];
+}
+document.getElementById('likelihood').addEventListener('change', updateScore);
+document.getElementById('impact').addEventListener('change', updateScore);
+</script>
+{% endblock %}

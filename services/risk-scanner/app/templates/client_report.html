@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Kundenbericht{% endblock %}
+{% block content %}
+<h1>Kundenbericht (Vorschau) — {{ scan.assessment.company_name }}</h1>
+<p class="hint">Dies ist die Ansicht, die der Kunde erhält — ohne Prämien-/Bußgeldzahlen, mit Handlungsempfehlungen.</p>
+
+<div class="actions">
+  <a class="button" href="/report/{{ scan.id }}/client/pdf">Als PDF herunterladen</a>
+  <a class="button secondary" href="/report/{{ scan.id }}">Zurück zum Underwriting-Bericht</a>
+</div>
+
+{% if scan.client_report_markdown %}
+<div class="card">
+<pre class="report-md">{{ scan.client_report_markdown }}</pre>
+</div>
+{% else %}
+<p>Kundenbericht noch nicht verfügbar.</p>
+{% endif %}
+{% endblock %}

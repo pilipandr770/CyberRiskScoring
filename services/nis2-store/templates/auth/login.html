@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Anmelden — NIS2 Compliance{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-sm-10 col-md-7 col-lg-5 col-xl-4">
+    <div class="text-center mb-4">
+      <i class="bi bi-shield-lock-fill text-primary" style="font-size:2.5rem;"></i>
+      <h2 class="fw-700 mt-2">Anmelden</h2>
+      <p class="text-muted small">Willkommen zurück bei Ihrer NIS2 Compliance Platform</p>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('auth.login') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label fw-500">E-Mail-Adresse</label>
+            <input type="email" name="email" class="form-control" required autofocus
+                   placeholder="ihre@email.de">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-500 d-flex justify-content-between">
+              Passwort
+              <a href="{{ url_for('auth.forgot_password') }}" class="small text-muted">Vergessen?</a>
+            </label>
+            <input type="password" name="password" class="form-control" required
+                   placeholder="••••••••">
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="remember" id="remember">
+            <label class="form-check-label small" for="remember">Angemeldet bleiben</label>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 fw-600">
+            <i class="bi bi-box-arrow-in-right me-1"></i> Anmelden
+          </button>
+        </form>
+      </div>
+    </div>
+    <p class="text-center text-muted small mt-3">
+      Noch kein Konto?
+      <a href="{{ url_for('auth.register') }}" class="fw-600">Kostenlos registrieren</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

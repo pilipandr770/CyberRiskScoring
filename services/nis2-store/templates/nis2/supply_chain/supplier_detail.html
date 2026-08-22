@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% block title %}{{ supplier.company_name }} — Lieferant{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <a href="{{ url_for('nis2.supply_chain_dashboard') }}" class="text-muted text-decoration-none small">
+        <i class="bi bi-arrow-left"></i> Lieferkette
+      </a>
+      <h4 class="mt-1 mb-0"><i class="bi bi-building"></i> {{ supplier.company_name }}</h4>
+      <small class="text-muted">{{ supplier.category }} | Erstellt: {{ supplier.created_at.strftime('%d.%m.%Y') }}</small>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal">
+        <i class="bi bi-pencil"></i> Bearbeiten
+      </button>
+      <form method="POST" action="{{ url_for('nis2.supply_chain_delete', supplier_id=supplier.id) }}"
+            onsubmit="return confirm('Lieferant wirklich löschen?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left: details + risk -->
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <small class="text-muted">Kritikalität</small>
+              <div><span class="badge bg-{{ 'danger' if supplier.criticality == 'critical' else 'warning' if supplier.criticality == 'high' else 'secondary' }}">
+                {{ supplier.criticality|upper if supplier.criticality else '—' }}
+              </span></div>
+            </div>
+            <div class="col-md-4">
+              <small class="text-muted">ISO 27001</small>
+              <div>{% if supplier.has_iso27001 %}<i class="bi bi-shield-check text-success fs-5"></i>{% else %}<span class="text-muted">Nicht zertifiziert</span>{% endif %}</div>
+            </div>
+            <div class="col-md-4">
+              <small class="text-muted">AVV-Status</small>
+              <div>
+                {% if supplier.avv_exists %}
+                  <i class="bi bi-check-circle text-success"></i> Unterzeichnet
+                  {% if supplier.avv_signed_at %}<small class="text-muted">({{ supplier.avv_signed_at.strftime('%d.%m.%Y') }})</small>{% endif %}
+                {% else %}
+                  <span class="badge bg-warning text-dark">Ausstehend</span>
+                {% endif %}
+              </div>
+            </div>
+            {% if supplier.contact_email %}
+            <div class="col-md-6">
+              <small class="text-muted">Kontakt</small>
+              <div>{{ supplier.contact_email }}</div>
+            </div>
+            {% endif %}
+            {% if supplier.vat_id %}
+            <div class="col-md-6">
+              <small class="text-muted">USt-IdNr.</small>
+              <div>{{ supplier.vat_id }}</div>
+            </div>
+            {% endif %}
+            {% if supplier.services_provided %}
+            <div class="col-12">
+              <small class="text-muted">Dienstleistungen</small>
+              <div>{{ supplier.services_provided }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Assessments -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header d-flex justify-content-between">
+          <strong>Risikobewertungen</strong>
+          <button type="button" class="btn btn-sm btn-outline-primary"
+                  data-bs-toggle="modal" data-bs-target="#assessModal">
+            + Neues Assessment
+          </button>
+        </div>
+        {% if assessments %}
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead class="table-light">
+              <tr><th>Datum</th><th>Typ</th><th>Risiko-Score</th><th>Notizen</th></tr>
+            </thead>
+            <tbody>
+              {% for a in assessments %}
+              <tr>
+                <td>{{ a.assessed_at.strftime('%d.%m.%Y') }}</td>
+                <td>{{ a.assessment_type }}</td>
+                <td>
+                  <span class="badge bg-{{ 'danger' if a.risk_score >= 70 else 'warning' if a.risk_score >= 40 else 'success' }}">
+                    {{ a.risk_score }}/100
+                  </span>
+                </td>
+                <td><small class="text-muted">{{ a.notes or '—' }}</small></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="card-body text-muted text-center">Noch keine Assessments</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right: risk gauge + verify -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm mb-3 text-center p-4">
+        <div id="riskScore" class="h1 fw-bold text-{{ 'danger' if supplier.risk_score and supplier.risk_score >= 70 else 'warning' if supplier.risk_score and supplier.risk_score >= 40 else 'success' }}">
+          {{ supplier.risk_score|int if supplier.risk_score is not none else '?' }}
+        </div>
+        <small class="text-muted">Risiko-Score / 100</small>
+        <button id="verifyBtn" class="btn btn-outline-primary btn-sm w-100 mt-3"
+                onclick="runVerify()">
+          <i class="bi bi-arrow-repeat"></i> Verifizierung starten
+        </button>
+        {% if supplier.last_verification_at %}
+        <small class="text-muted mt-2" id="lastVerified">
+          Letzte Prüfung: {{ supplier.last_verification_at.strftime('%d.%m.%Y %H:%M') }}
+        </small>
+        {% else %}
+        <small class="text-muted mt-2" id="lastVerified"></small>
+        {% endif %}
+      </div>
+
+      <!-- Verification results panel (hidden until verify runs) -->
+      <div id="verifyResults" class="d-none">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header py-2">
+            <strong class="small"><i class="bi bi-clipboard-data me-1"></i> Prüfungsergebnis</strong>
+          </div>
+          <div class="card-body p-3 small" id="verifyBody"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Assessment modal -->
+<div class="modal fade" id="assessModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('nis2.supply_chain_assess', supplier_id=supplier.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Neues Risiko-Assessment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Risiko-Score (0–100)</label>
+            <input type="number" name="score" class="form-control" min="0" max="100"
+                   value="50" required>
+            <div class="form-text">0 = kein Risiko, 100 = kritisches Risiko</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Notizen</label>
+            <textarea name="notes" class="form-control" rows="3"
+                      placeholder="Begründung, Prüfschritte, Befunde…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Abbrechen</button>
+          <button type="submit" class="btn btn-primary">Bewertung speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('nis2.supply_chain_update', supplier_id=supplier.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ supplier.company_name }} bearbeiten</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Firmenname</label>
+              <input type="text" name="company_name" class="form-control" value="{{ supplier.company_name }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Kritikalität</label>
+              <select name="criticality" class="form-select">
+                {% for c in ['low','medium','high','critical'] %}
+                <option {{ 'selected' if supplier.criticality == c }}>{{ c }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Kontakt-E-Mail</label>
+              <input type="email" name="contact_email" class="form-control" value="{{ supplier.contact_email or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">USt-IdNr.</label>
+              <input type="text" name="vat_number" class="form-control" value="{{ supplier.vat_id or '' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Dienstleistungen</label>
+              <textarea name="services_provided" class="form-control" rows="2">{{ supplier.services_provided or '' }}</textarea>
+            </div>
+            <div class="col-md-6">
+              <div class="form-check form-switch mt-3">
+                <input class="form-check-input" type="checkbox" name="avv_signed" id="editAvv"
+                       {{ 'checked' if supplier.avv_exists }}>
+                <label class="form-check-label" for="editAvv">AVV unterzeichnet</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-check form-switch mt-3">
+                <input class="form-check-input" type="checkbox" name="iso27001_certified" id="editIso"
+                       {{ 'checked' if supplier.has_iso27001 }}>
+                <label class="form-check-label" for="editIso">ISO 27001 zertifiziert</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content
+    || '{{ csrf_token() }}';
+const VERIFY_URL = '{{ url_for("nis2.supply_chain_verify", supplier_id=supplier.id) }}';
+
+function runVerify() {
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Wird geprüft…';
+
+  fetch(VERIFY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+    body: JSON.stringify({})
+  })
+  .then(r => r.json())
+  .then(data => renderResults(data))
+  .catch(err => {
+    document.getElementById('verifyBody').innerHTML =
+      `<div class="text-danger"><i class="bi bi-x-circle me-1"></i>Fehler: ${err}</div>`;
+    document.getElementById('verifyResults').classList.remove('d-none');
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Erneut prüfen';
+  });
+}
+
+function renderResults(data) {
+  const scoreEl = document.getElementById('riskScore');
+  const score = data.risk_score ?? '?';
+  const color = data.risk_color ?? 'secondary';
+  scoreEl.textContent = typeof score === 'number' ? Math.round(score) : score;
+  scoreEl.className = `h1 fw-bold text-${color}`;
+
+  const now = new Date().toLocaleDateString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('lastVerified').textContent = `Letzte Prüfung: ${now}`;
+
+  const r = data.results || {};
+  let html = '';
+
+  // ── VAT / VIES ─────────────────────────────────────────────
+  if (r.vat) {
+    const vat = r.vat;
+    const vatStatus = vat.status || (vat.prefill ? 'success' : 'warning');
+    const icon = vatStatus === 'success' ? '✅' : vatStatus === 'error' ? '❌' : '⚠️';
+    const company = vat.prefill?.counterparty_name || '—';
+    const address = vat.prefill?.counterparty_address || '—';
+    const msgs = (vat.messages || []).map(m =>
+      `<li class="text-${m.level === 'success' ? 'success' : m.level === 'warning' ? 'warning' : 'danger'}">${m.text}</li>`
+    ).join('');
+    html += `
+      <div class="mb-3">
+        <div class="fw-semibold mb-1">${icon} VAT / VIES-Prüfung</div>
+        <div class="ms-3">
+          <div><span class="text-muted">Firma:</span> ${company}</div>
+          <div><span class="text-muted">Adresse:</span> ${address}</div>
+          ${msgs ? `<ul class="mb-0 mt-1 ps-3 small">${msgs}</ul>` : ''}
+        </div>
+      </div><hr class="my-2">`;
+  }
+
+  // ── Sanctions ───────────────────────────────────────────────
+  if (r.sanctions) {
+    const s = r.sanctions;
+    let icon, label, detail = '';
+    if (s.status === 'error') {
+      icon = '⚠️'; label = 'Sanktionsprüfung fehlgeschlagen';
+      detail = `<div class="text-muted small">${s.error || ''}</div>`;
+    } else {
+      const hits = s.sanctions_found?.length || 0;
+      icon = hits > 0 ? '🚨' : '✅';
+      label = hits > 0 ? `${hits} Sanktionstreffer!` : 'Keine Sanktionen gefunden';
+      if (hits > 0) {
+        detail = (s.sanctions_found || []).map(sf =>
+          `<div class="text-danger small">• ${sf.source}: ${JSON.stringify(sf.match).substring(0,80)}</div>`
+        ).join('');
+      } else {
+        detail = `<div class="text-muted small">Geprüft: EU-Sanktionen, OFAC, UK HM Treasury</div>`;
+      }
+    }
+    html += `
+      <div class="mb-3">
+        <div class="fw-semibold mb-1">${icon} Sanktionsprüfung</div>
+        <div class="ms-3">${label}<div class="mt-1">${detail}</div></div>
+      </div><hr class="my-2">`;
+  }
+
+  // ── Risk Score summary ──────────────────────────────────────
+  const riskLabel = score >= 70 ? '🔴 Hohes Risiko'
+                  : score >= 40 ? '🟡 Mittleres Risiko'
+                  : '🟢 Niedriges Risiko';
+  html += `<div class="fw-semibold">${riskLabel} (${typeof score === 'number' ? Math.round(score) : score}/100)</div>`;
+
+  document.getElementById('verifyBody').innerHTML = html || '<div class="text-muted">Keine Daten</div>';
+  document.getElementById('verifyResults').classList.remove('d-none');
+}
+</script>
+{% endblock %}

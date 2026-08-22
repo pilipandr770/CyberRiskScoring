@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% block title %}Profil{% endblock %}
+{% block page_title %}Mein Profil{% endblock %}
+{% block content %}
+<div class="row g-4">
+  {# ── Persönliche Daten ─────────────────────────────────── #}
+  <div class="col-lg-6">
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-person me-2"></i>Persönliche Daten</div>
+      <div class="card-body">
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label">Vorname</label>
+              <input type="text" name="first_name" class="form-control" value="{{ current_user.first_name or '' }}">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Nachname</label>
+              <input type="text" name="last_name" class="form-control" value="{{ current_user.last_name or '' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Unternehmen</label>
+              <input type="text" name="company_name" class="form-control" value="{{ current_user.company_name or '' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label">E-Mail (nicht änderbar)</label>
+              <input type="email" class="form-control" value="{{ current_user.email }}" disabled>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Telefon</label>
+              <input type="text" name="phone" class="form-control" autocomplete="tel"
+                     value="{{ current_user.phone or '' }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Neues Passwort <span class="text-muted">(leer = unverändert)</span></label>
+              <input type="password" name="new_password" class="form-control" minlength="8">
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i>Speichern
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {# ── Abmelden ────────────────────────────────────────── #}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body d-flex align-items-center gap-3">
+        <i class="bi bi-box-arrow-right fs-4 text-secondary"></i>
+        <div class="flex-grow-1">
+          <div class="fw-semibold">Abmelden</div>
+          <div class="text-muted small">Sitzung beenden und zur Startseite zurückkehren.</div>
+        </div>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-secondary btn-sm">
+          Abmelden
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    {# ── Abonnement ─────────────────────────────────────── #}
+    <div class="card mb-4">
+      <div class="card-header"><i class="bi bi-credit-card me-2"></i>Abonnement</div>
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span class="fs-5 fw-bold">{{ current_user.plan_label }}</span>
+          {% if current_user.subscription_plan == 'trial' %}
+            <span class="badge bg-warning text-dark">Testphase</span>
+          {% elif current_user.subscription_plan == 'basic' %}
+            <span class="badge bg-info">€49/Monat</span>
+          {% elif current_user.subscription_plan == 'professional' %}
+            <span class="badge bg-success">€149/Monat</span>
+          {% endif %}
+        </div>
+        {% if current_user.subscription_plan == 'trial' and current_user.trial_ends_at %}
+          <p class="text-muted small mb-3">
+            Testphase endet am <strong>{{ current_user.trial_ends_at.strftime('%d.%m.%Y') }}</strong>.
+          </p>
+        {% endif %}
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{{ url_for('payments.pricing') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-arrow-up-circle me-1"></i>Tarif wechseln
+          </a>
+          {% if current_user.subscription_plan in ('basic', 'professional', 'enterprise') %}
+            <form method="POST" action="{{ url_for('payments.cancel_subscription') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-outline-warning btn-sm"
+                      onclick="return confirm('Abonnement wirklich kündigen? Ihr Zugang bleibt bis zum Monatsende aktiv.')">
+                <i class="bi bi-x-circle me-1"></i>Abo kündigen
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# ── 2FA ────────────────────────────────────────────── #}
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-shield-lock me-1"></i>Zwei-Faktor-Authentifizierung</span>
+        {% if current_user.totp_enabled %}
+          <span class="badge bg-success">Aktiv</span>
+        {% else %}
+          <span class="badge bg-secondary">Inaktiv</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if current_user.totp_enabled %}
+          <p class="small text-muted mb-3">
+            MFA ist aktiv. Erfüllt §30 Nr. 10 BSIG (MFA für privilegierte Zugänge).
+          </p>
+          <form method="POST" action="{{ url_for('auth.mfa_disable') }}" class="row g-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-auto">
+              <input type="text" name="code" class="form-control font-monospace"
+                     placeholder="TOTP-Code" maxlength="6" style="width:160px">
+            </div>
+            <div class="col-auto">
+              <button type="submit" class="btn btn-outline-danger btn-sm"
+                      onclick="return confirm('MFA wirklich deaktivieren?')">
+                Deaktivieren
+              </button>
+            </div>
+          </form>
+        {% else %}
+          <p class="small text-muted mb-3">
+            TOTP-Schutz empfohlen nach §30 Nr. 10 BSIG.
+          </p>
+          <a href="{{ url_for('auth.mfa_setup') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-shield-plus me-1"></i>MFA einrichten
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Konto löschen ───────────────────────────────────── #}
+    <div class="card border-danger border-opacity-25">
+      <div class="card-header text-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>Gefahrenzone
+      </div>
+      <div class="card-body">
+        <p class="small text-muted mb-3">
+          Wenn Sie Ihr Konto löschen, werden alle Daten (ISMS-Dokumente, Lieferanten,
+          Incidents, BSI-Registrierung) dauerhaft entfernt.
+          Diese Aktion kann nicht rückgängig gemacht werden.
+        </p>
+        <a href="{{ url_for('legal.delete_account') }}" class="btn btn-outline-danger btn-sm">
+          <i class="bi bi-trash me-1"></i>Konto und alle Daten löschen
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

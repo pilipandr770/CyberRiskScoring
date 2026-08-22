@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}AGB — NIS2 Compliance Platform{% endblock %}
+{% block page_title %}Allgemeine Geschäftsbedingungen{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card p-4">
+      <h1 class="h3 mb-1">Allgemeine Geschäftsbedingungen (AGB)</h1>
+      <p class="text-muted small mb-4">Stand: Mai 2025 · Andrii Pylypchuk, Frankfurt am Main</p>
+
+      <h5>§ 1 Geltungsbereich</h5>
+      <p>
+        Diese AGB gelten für alle Verträge zwischen Andrii Pylypchuk (nachfolgend „Anbieter")
+        und Unternehmenskunden (nachfolgend „Kunde") über die Nutzung der NIS2 Compliance Platform
+        (Software-as-a-Service). Abweichende Bedingungen des Kunden werden nicht anerkannt.
+      </p>
+
+      <h5 class="mt-4">§ 2 Leistungsbeschreibung</h5>
+      <p>
+        Der Anbieter stellt dem Kunden eine webbasierte SaaS-Plattform zur Unterstützung bei
+        der Erfüllung der Anforderungen der NIS2-Richtlinie (EU 2022/2555) und des BSIG zur Verfügung.
+        Die Plattform umfasst u. a.:
+      </p>
+      <ul>
+        <li>BSI-Registrierungsassistent</li>
+        <li>ISMS-Dokumentenverwaltung (KI-gestützt)</li>
+        <li>Risikoregister</li>
+        <li>Incident-Response-Management inkl. BSI-Meldeassistent</li>
+        <li>Lieferkettenmanagement</li>
+        <li>DSGVO Art. 30 Verarbeitungsverzeichnis</li>
+        <li>Schulungsverwaltung</li>
+        <li>Monitoring und Site-Audit</li>
+      </ul>
+      <p class="small text-muted">
+        Die Plattform dient als Arbeitshilfe und ersetzt keine rechtliche oder fachliche Beratung.
+        Verbindliche Compliance-Prüfungen obliegen dem Kunden.
+      </p>
+
+      <h5 class="mt-4">§ 3 Testphase und Vertragsschluss</h5>
+      <p>
+        Nach der Registrierung erhält der Kunde einen kostenfreien Testzugang für
+        <strong>14 Tage</strong> mit vollem Funktionsumfang. Ein kostenpflichtiger Vertrag
+        kommt erst durch die ausdrückliche Buchung eines Tarifs zustande.
+        Nach Ablauf der Testphase ohne Buchung wird der Zugang automatisch deaktiviert.
+      </p>
+
+      <h5 class="mt-4">§ 4 Zugang und Kosten</h5>
+      <p>
+        Der Zugang zu dieser Plattform erfolgt ausschließlich im Rahmen eines bestehenden
+        Cyber-Versicherungsvertrags und wird durch den Versicherer bereitgestellt. Es findet
+        keine gesonderte Abrechnung oder Zahlungsabwicklung über diese Plattform statt.
+      </p>
+
+      <h5 class="mt-4">§ 5 Laufzeit und Kündigung</h5>
+      <p>
+        Abonnements haben eine monatliche Laufzeit und verlängern sich automatisch um einen
+        weiteren Monat, sofern nicht spätestens 3 Tage vor Ende des Abrechnungszeitraums
+        gekündigt wird. Die Kündigung ist über das Nutzerprofil oder per E-Mail an
+        <a href="mailto:info@andrii-it.de">info@andrii-it.de</a> möglich.
+        Das Recht zur außerordentlichen Kündigung bleibt unberührt.
+      </p>
+
+      <h5 class="mt-4">§ 6 Nutzungsrechte und Pflichten des Kunden</h5>
+      <p>
+        Der Kunde erhält ein nicht übertragbares, nicht exklusives Recht zur Nutzung der
+        Plattform für eigene betriebliche Zwecke. Der Kunde ist verpflichtet:
+      </p>
+      <ul>
+        <li>Zugangsdaten vertraulich zu behandeln und vor unbefugtem Zugriff zu schützen</li>
+        <li>Keine automatisierten Zugriffe (Scraping, DDoS) durchzuführen</li>
+        <li>Keine rechtswidrigen Inhalte einzustellen</li>
+        <li>Verstöße gegen die Plattform-Sicherheit unverzüglich zu melden</li>
+      </ul>
+
+      <h5 class="mt-4">§ 7 Verfügbarkeit und Wartung</h5>
+      <p>
+        Der Anbieter strebt eine Verfügbarkeit von 99 % pro Monat an (exkl. geplanter Wartungsarbeiten).
+        Wartungsarbeiten werden nach Möglichkeit vorab angekündigt. Ein Anspruch auf eine bestimmte
+        Verfügbarkeit besteht nicht.
+      </p>
+
+      <h5 class="mt-4">§ 8 Datenschutz</h5>
+      <p>
+        Die Verarbeitung personenbezogener Daten erfolgt gemäß unserer
+        <a href="{{ url_for('legal.datenschutz') }}">Datenschutzerklärung</a> und den
+        Vorschriften der DSGVO. Für Unternehmenskunden kann auf Anfrage ein
+        Auftragsverarbeitungsvertrag (AVV) gemäß Art. 28 DSGVO abgeschlossen werden.
+      </p>
+
+      <h5 class="mt-4">§ 9 Haftung</h5>
+      <p>
+        Der Anbieter haftet uneingeschränkt für Schäden aus der Verletzung des Lebens, des Körpers
+        oder der Gesundheit sowie für vorsätzlich oder grob fahrlässig verursachte Schäden.
+        Bei leichter Fahrlässigkeit haftet der Anbieter nur bei Verletzung wesentlicher
+        Vertragspflichten (Kardinalpflichten), und zwar begrenzt auf den vertragstypischen,
+        vorhersehbaren Schaden. Eine weitergehende Haftung ist ausgeschlossen.
+      </p>
+      <p class="small text-muted">
+        Die Plattform unterstützt Compliance-Prozesse, garantiert jedoch nicht die vollständige
+        Erfüllung gesetzlicher Anforderungen. Die rechtliche Verantwortung verbleibt beim Kunden.
+      </p>
+
+      <h5 class="mt-4">§ 10 Änderungen der AGB</h5>
+      <p>
+        Der Anbieter behält sich vor, diese AGB mit einer Ankündigungsfrist von 30 Tagen
+        per E-Mail zu ändern. Widerspricht der Kunde nicht innerhalb von 14 Tagen nach
+        Zugang der Änderungsmitteilung, gelten die neuen AGB als akzeptiert.
+      </p>
+
+      <h5 class="mt-4">§ 11 Anwendbares Recht und Gerichtsstand</h5>
+      <p>
+        Es gilt deutsches Recht unter Ausschluss des UN-Kaufrechts.
+        Gerichtsstand für alle Streitigkeiten aus diesem Vertrag ist Frankfurt am Main,
+        sofern der Kunde Kaufmann, juristische Person des öffentlichen Rechts oder
+        öffentlich-rechtliches Sondervermögen ist.
+      </p>
+
+      <div class="mt-4 d-flex gap-3 small">
+        <a href="{{ url_for('legal.impressum') }}">Impressum</a>
+        <a href="{{ url_for('legal.datenschutz') }}">Datenschutz</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

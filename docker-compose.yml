@@ -1,0 +1,37 @@
+services:
+  risk-scanner:
+    build: ./services/risk-scanner
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - risk_scanner_data:/app/data
+
+  nis2-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: nis2_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - nis2_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nis2-store:
+    build: ./services/nis2-store
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env.nis2store
+    depends_on:
+      nis2-postgres:
+        condition: service_healthy
+
+volumes:
+  risk_scanner_data:
+  nis2_postgres_data:

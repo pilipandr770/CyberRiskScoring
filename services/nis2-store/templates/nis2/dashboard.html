@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+{% block title %}NIS2 Compliance Dashboard — §30 BSIG automatisiert | nis2.store{% endblock %}
+
+{% block head_extra %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "NIS2 Compliance Platform — §30 BSIG für deutsche KMU",
+    "description": "Vollautomatische NIS2 Compliance Plattform für Deutschland: BSI-Registrierung (§33 BSIG), KI-ISMS-Dokumente, Incident Response, Lieferkettensicherheit, Schulungen. Ab €49,90/Monat.",
+    "url": "https://nis2.store/nis2/",
+    "provider": {
+        "@type": "Organization",
+        "name": "NIS2 Compliance Platform",
+        "url": "https://nis2.store"
+    },
+    "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://nis2.store/"},
+            {"@type": "ListItem", "position": 2, "name": "NIS2 Compliance", "item": "https://nis2.store/nis2/"}
+        ]
+    },
+    "mainEntity": {
+        "@type": "SoftwareApplication",
+        "name": "NIS2 Compliance Platform",
+        "applicationCategory": "SecurityApplication",
+        "featureList": [
+            "BSI-Registrierungs-Assistent §33 BSIG",
+            "KI-ISMS-Dokumentengenerator (7 Dokumente)",
+            "Incident Response §32 BSIG (24h/72h Fristen)",
+            "Lieferkettensicherheit §30 Nr. 4 BSIG",
+            "Kontinuierliches Security Monitoring §30 Nr. 5",
+            "Awareness-Schulungen §30 Nr. 7 BSIG",
+            "NIS2 Compliance Score Dashboard"
+        ],
+        "offers": {
+            "@type": "Offer",
+            "name": "Professional",
+            "price": "49.90",
+            "priceCurrency": "EUR",
+            "description": "NIS2 Compliance Plattform + 500 VAT-Prüfungen/Monat + TeamGuard + MailGuard AI",
+            "availability": "https://schema.org/InStock",
+            "url": "https://nis2.store/pricing"
+        }
+    }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+  {# ══════════════════════════════════════════════════════════════
+     ONBOARDING BANNER — nur wenn Score = 0 und BSI nicht registriert
+  ══════════════════════════════════════════════════════════════ #}
+  {% if score_data.total_score == 0 and not score_data.bsi_registered %}
+  <div class="alert alert-primary border-0 shadow-sm mb-4 p-0 overflow-hidden" role="alert">
+    <div class="d-flex align-items-stretch">
+      <!-- Farbiger linker Streifen + Icon -->
+      <div class="d-flex align-items-center justify-content-center px-4 py-3"
+           style="background:linear-gradient(135deg,#1a3a5c,#0d6efd);min-width:90px;">
+        <i class="bi bi-rocket-takeoff-fill text-white" style="font-size:2rem;"></i>
+      </div>
+      <!-- Inhalt -->
+      <div class="flex-grow-1 p-3">
+        <div class="fw-700 mb-1" style="font-size:1.05rem;">
+          🚀 Wo anfangen? Ihr persönlicher NIS2-Quickstart
+        </div>
+        <p class="mb-2 text-muted" style="font-size:.9rem;">
+          In <strong>3 Minuten</strong> prüfen wir, ob Ihr Unternehmen unter NIS2 fällt,
+          und erstellen Ihren persönlichen Compliance-Aktionsplan.
+        </p>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <a href="{{ url_for('nis2.bsi_check') }}"
+             class="btn btn-primary btn-sm px-3 fw-600">
+            <i class="bi bi-clipboard-check me-1"></i>
+            Schritt 1: Betroffenheit prüfen (2 Min)
+          </a>
+          <a href="{{ url_for('nis2.isms_overview') }}"
+             class="btn btn-outline-primary btn-sm px-3">
+            <i class="bi bi-file-earmark-text me-1"></i>
+            Schritt 2: ISMS-Dokumente erstellen
+          </a>
+          <a href="{{ url_for('nis2.training_list') }}"
+             class="btn btn-outline-secondary btn-sm px-3">
+            <i class="bi bi-mortarboard me-1"></i>
+            Schritt 3: Schulungen versenden
+          </a>
+        </div>
+      </div>
+      <!-- Rechts: Fortschrittsanzeige -->
+      <div class="d-none d-md-flex flex-column align-items-center justify-content-center px-4 py-3
+                  border-start text-center" style="min-width:110px;">
+        <div style="font-size:2rem;font-weight:800;color:#dc3545;">0%</div>
+        <div style="font-size:.72rem;color:#6c757d;">NIS2-Score</div>
+        <div class="mt-1">
+          <span class="badge bg-danger" style="font-size:.65rem;">Kritisch</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h1 class="h3 mb-1"><i class="bi bi-shield-fill-check text-primary"></i> NIS2 Compliance Dashboard</h1>
+          <p class="text-muted mb-0">§30 BSIG — 10 Pflichtmaßnahmen im Überblick</p>
+        </div>
+        <div class="text-end">
+          {% if score_data.bsi_registered %}
+            <span class="badge bg-success fs-6 p-2"><i class="bi bi-check-circle"></i> BSI registriert</span>
+          {% else %}
+            <a href="{{ url_for('nis2.bsi_registration_landing') }}" class="btn btn-warning btn-sm">
+              <i class="bi bi-building"></i> BSI-Registrierung starten
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overall Score + Quick Stats -->
+  <div class="row mb-4 g-3">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body text-center">
+          <div class="display-4 fw-bold {% if score_data.total_score >= 80 %}text-success{% elif score_data.total_score >= 50 %}text-warning{% else %}text-danger{% endif %}">
+            {{ score_data.total_score|round|int }}%
+          </div>
+          <div class="text-muted small">Compliance-Score</div>
+          <div class="progress mt-2" style="height: 8px;">
+            <div class="progress-bar {% if score_data.total_score >= 80 %}bg-success{% elif score_data.total_score >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                 style="width: {{ score_data.total_score }}%"></div>
+          </div>
+          <div class="row mt-2 text-center small">
+            <div class="col-4"><span class="text-success fw-bold">{{ score_data.complete_count }}</span><br>Fertig</div>
+            <div class="col-4"><span class="text-warning fw-bold">{{ score_data.partial_count }}</span><br>Teils</div>
+            <div class="col-4"><span class="text-danger fw-bold">{{ score_data.open_count }}</span><br>Offen</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-9">
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <a href="{{ url_for('nis2.isms_overview') }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm text-center p-3">
+              <i class="bi bi-file-earmark-check fs-2 text-primary mb-1"></i>
+              <div class="h4 fw-bold mb-0">{{ score_data.docs_generated }}</div>
+              <div class="text-muted small">ISMS-Dokumente</div>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-md-3">
+          <a href="{{ url_for('nis2.incidents_list') }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm text-center p-3 {% if score_data.open_incidents > 0 %}border-danger{% endif %}">
+              <i class="bi bi-exclamation-triangle fs-2 {% if score_data.open_incidents > 0 %}text-danger{% else %}text-muted{% endif %} mb-1"></i>
+              <div class="h4 fw-bold mb-0 {% if score_data.open_incidents > 0 %}text-danger{% endif %}">{{ score_data.open_incidents }}</div>
+              <div class="text-muted small">Offene Vorfälle</div>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-md-3">
+          <a href="{{ url_for('nis2.monitoring_dashboard') }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm text-center p-3">
+              <i class="bi bi-radar fs-2 text-info mb-1"></i>
+              <div class="h4 fw-bold mb-0">{{ score_data.monitoring_targets }}</div>
+              <div class="text-muted small">Monitored Domains</div>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-md-3">
+          <a href="{{ url_for('nis2.supply_chain_dashboard') }}" class="text-decoration-none">
+            <div class="card border-0 shadow-sm text-center p-3">
+              <i class="bi bi-diagram-3 fs-2 text-warning mb-1"></i>
+              <div class="h4 fw-bold mb-0">{{ score_data.active_suppliers }}</div>
+              <div class="text-muted small">Lieferanten</div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="row mb-4 g-3">
+    <!-- Radar: §30 Maßnahmen -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header">
+          <strong><i class="bi bi-diagram-2"></i> §30 Maßnahmen-Radar</strong>
+        </div>
+        <div class="card-body d-flex align-items-center justify-content-center" style="min-height:280px">
+          <canvas id="radarChart" style="max-height:260px"></canvas>
+        </div>
+      </div>
+    </div>
+    <!-- Doughnut: Compliance-Verteilung + Deadline summary -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header">
+          <strong><i class="bi bi-pie-chart"></i> Compliance-Verteilung</strong>
+        </div>
+        <div class="card-body d-flex flex-column align-items-center justify-content-center gap-3" style="min-height:280px">
+          <canvas id="doughnutChart" style="max-height:200px;max-width:200px"></canvas>
+          <div class="d-flex gap-4 small">
+            <span><span class="badge bg-success me-1">&nbsp;</span>Erfüllt: {{ score_data.complete_count }}</span>
+            <span><span class="badge bg-warning text-dark me-1">&nbsp;</span>Teilweise: {{ score_data.partial_count }}</span>
+            <span><span class="badge bg-danger me-1">&nbsp;</span>Offen: {{ score_data.open_count }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Next Actions -->
+  {% if score_data.next_actions %}
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-warning shadow-sm">
+        <div class="card-header bg-warning bg-opacity-10 border-warning">
+          <strong><i class="bi bi-lightning-charge"></i> Nächste empfohlene Maßnahmen</strong>
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for action in score_data.next_actions[:5] %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>
+              <i class="bi {{ action.icon }} {% if action.priority == 'urgent' %}text-danger{% else %}text-warning{% endif %} me-2"></i>
+              {{ action.text }}
+            </span>
+            <a href="{{ action.url }}" class="btn btn-sm btn-outline-primary">Jetzt</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 10 Measures Grid -->
+  <div class="row g-3">
+    <div class="col-12">
+      <h5 class="mb-3 fw-bold"><i class="bi bi-list-check"></i> §30 Abs. 2 BSIG — 10 Pflichtmaßnahmen</h5>
+    </div>
+    {% for key, m in score_data.measures.items() %}
+    <div class="col-md-6 col-xl-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi {{ m.icon }} fs-5 text-primary"></i>
+              <div>
+                <div class="fw-semibold small">{{ m.label }}</div>
+                <div class="text-muted" style="font-size:0.75rem">{{ m.paragraph }}</div>
+              </div>
+            </div>
+            <span class="badge {% if m.status == 'complete' %}bg-success{% elif m.status == 'partial' %}bg-warning text-dark{% else %}bg-danger{% endif %} ms-2 flex-shrink-0">
+              {% if m.status == 'complete' %}✓{% elif m.status == 'partial' %}~{% else %}!{% endif %}
+            </span>
+          </div>
+          <div class="progress mb-2" style="height: 6px;">
+            <div class="progress-bar {% if m.score >= 80 %}bg-success{% elif m.score >= 40 %}bg-warning{% else %}bg-danger{% endif %}"
+                 style="width: {{ m.score }}%"></div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <small class="text-muted">{{ m.score|round|int }}% erfüllt</small>
+            <a href="{{ m.action_url }}" class="btn btn-xs btn-outline-secondary" style="font-size:0.75rem;padding:2px 8px;">
+              {{ m.action_label }}
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Module Quick Links -->
+  <div class="row mt-5 g-3">
+    <div class="col-12"><h5 class="fw-bold"><i class="bi bi-grid"></i> Module</h5></div>
+    <div class="col-md-3">
+      <a href="{{ url_for('nis2.bsi_registration_landing') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm p-3 text-center h-100">
+          <i class="bi bi-building fs-2 text-primary mb-2"></i>
+          <strong>BSI-Registrierung</strong>
+          <small class="text-muted d-block">§33 BSIG Wizard</small>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('nis2.isms_overview') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm p-3 text-center h-100">
+          <i class="bi bi-file-earmark-text fs-2 text-success mb-2"></i>
+          <strong>ISMS-Dokumente</strong>
+          <small class="text-muted d-block">10 Policies via KI</small>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('nis2.monitoring_dashboard') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm p-3 text-center h-100">
+          <i class="bi bi-radar fs-2 text-info mb-2"></i>
+          <strong>Monitoring</strong>
+          <small class="text-muted d-block">Automatische Scans</small>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('nis2.incidents_list') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm p-3 text-center h-100">
+          <i class="bi bi-exclamation-triangle fs-2 text-danger mb-2"></i>
+          <strong>Incident Response</strong>
+          <small class="text-muted d-block">BSI Meldungen</small>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('nis2.supply_chain_dashboard') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm p-3 text-center h-100">
+          <i class="bi bi-diagram-3 fs-2 text-warning mb-2"></i>
+          <strong>Lieferkette</strong>
+          <small class="text-muted d-block">Supplier Risk + AVV</small>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('nis2.training_list') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm p-3 text-center h-100">
+          <i class="bi bi-mortarboard fs-2 text-success mb-2"></i>
+          <strong>Schulungen</strong>
+          <small class="text-muted d-block">§30 Nr. 7 Awareness</small>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('nis2.risk_list') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm p-3 text-center h-100">
+          <i class="bi bi-shield-exclamation fs-2 text-danger mb-2"></i>
+          <strong>Risikoregister</strong>
+          <small class="text-muted d-block">§30 Nr. 1 BSI 200-3</small>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('nis2.dsgvo_list') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm p-3 text-center h-100">
+          <i class="bi bi-person-lock fs-2 text-secondary mb-2"></i>
+          <strong>DSGVO Art. 30</strong>
+          <small class="text-muted d-block">Verarbeitungsverzeichnis</small>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const radarLabels = [
+    {% for key, m in score_data.measures.items() %}
+      '{{ m.paragraph }}'{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+  const radarData = [
+    {% for key, m in score_data.measures.items() %}
+      {{ m.score|round|int }}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  new Chart(document.getElementById('radarChart'), {
+    type: 'radar',
+    data: {
+      labels: radarLabels,
+      datasets: [{
+        label: 'Erfüllungsgrad (%)',
+        data: radarData,
+        fill: true,
+        backgroundColor: 'rgba(13, 110, 253, 0.15)',
+        borderColor: 'rgba(13, 110, 253, 0.8)',
+        pointBackgroundColor: radarData.map(v =>
+          v >= 80 ? '#198754' : v >= 40 ? '#ffc107' : '#dc3545'
+        ),
+        pointRadius: 4,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { stepSize: 25, font: { size: 10 } },
+          pointLabels: { font: { size: 11 } },
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.raw + '%' } }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('doughnutChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Erfüllt', 'Teilweise', 'Offen'],
+      datasets: [{
+        data: [
+          {{ score_data.complete_count }},
+          {{ score_data.partial_count }},
+          {{ score_data.open_count }}
+        ],
+        backgroundColor: ['#198754', '#ffc107', '#dc3545'],
+        borderWidth: 0,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      cutout: '68%',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.label + ': ' + ctx.raw + ' Maßnahme(n)'
+          }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Alle Nutzer — Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex align-items-center mb-4 gap-3">
+    <i class="bi bi-people-fill text-primary fs-3"></i>
+    <div>
+      <h4 class="mb-0 fw-bold">Alle Nutzer</h4>
+      <small class="text-muted">{{ users|length }} Registrierungen gesamt</small>
+    </div>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm ms-auto">
+      <i class="bi bi-arrow-left me-1"></i>Dashboard
+    </a>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div style="overflow-x:auto">
+        <table class="table table-sm table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Name / E-Mail</th>
+              <th>Plan</th>
+              <th>Stripe Customer</th>
+              <th>Registriert</th>
+              <th class="text-end">Tokens</th>
+              <th class="text-end">Calls</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            {% set udata = usage_map.get(u.id, {}) %}
+            <tr>
+              <td class="text-muted small">{{ loop.index }}</td>
+              <td>
+                <div class="fw-semibold small">{{ u.display_name }}</div>
+                <div class="text-muted" style="font-size:.75rem">{{ u.email }}</div>
+              </td>
+              <td>
+                {% if u.subscription_plan == 'trial' %}
+                  <span class="badge bg-warning text-dark">Trial</span>
+                {% elif u.subscription_plan == 'basic' %}
+                  <span class="badge bg-info">Basic €49</span>
+                {% elif u.subscription_plan == 'professional' %}
+                  <span class="badge bg-success">Pro €149</span>
+                {% elif u.subscription_plan == 'enterprise' %}
+                  <span class="badge bg-primary">Enterprise</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ u.subscription_plan }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.stripe_customer_id %}
+                  <span class="text-muted" style="font-size:.7rem">{{ u.stripe_customer_id }}</span>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td class="small text-muted">{{ u.created_at.strftime('%d.%m.%Y') if u.created_at else '—' }}</td>
+              <td class="text-end small fw-semibold">
+                {% if udata.tokens %}
+                  {{ '{:,}'.format(udata.tokens) }}
+                {% else %}
+                  <span class="text-muted">0</span>
+                {% endif %}
+              </td>
+              <td class="text-end small">
+                {% if udata.calls %}{{ udata.calls }}{% else %}<span class="text-muted">0</span>{% endif %}
+              </td>
+              <td>
+                {% if u.is_admin %}
+                  <span class="badge bg-danger"><i class="bi bi-shield-lock me-1"></i>Admin</span>
+                {% elif u.is_active %}
+                  <span class="badge bg-light text-success border border-success">Aktiv</span>
+                {% else %}
+                  <span class="badge bg-light text-danger border border-danger">Inaktiv</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center text-muted py-4">Noch keine Nutzer registriert.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

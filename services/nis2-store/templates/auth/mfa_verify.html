@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Zwei-Faktor-Authentifizierung — NIS2{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-center" style="min-height:80vh">
+  <div class="card border-0 shadow-sm" style="width:100%;max-width:400px">
+    <div class="card-body p-4">
+      <div class="text-center mb-4">
+        <i class="bi bi-shield-lock-fill fs-1 text-primary"></i>
+        <h4 class="mt-2 mb-1">Zwei-Faktor-Authentifizierung</h4>
+        <p class="text-muted small">
+          Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.
+        </p>
+      </div>
+
+      <form method="POST" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Authentifizierungscode</label>
+          <input type="text" name="code" class="form-control form-control-lg text-center font-monospace"
+                 maxlength="8" autofocus autocomplete="one-time-code"
+                 placeholder="000000"
+                 style="letter-spacing:.4em;font-size:1.5rem">
+          <div class="form-text">
+            TOTP-Code (6 Ziffern) oder Backup-Code (8 Zeichen)
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-shield-check me-1"></i> Bestätigen
+        </button>
+      </form>
+
+      <div class="text-center mt-3">
+        <a href="{{ url_for('auth.login') }}" class="text-muted small">
+          <i class="bi bi-arrow-left me-1"></i>Zurück zur Anmeldung
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

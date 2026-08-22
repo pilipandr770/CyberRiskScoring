@@ -1,0 +1,638 @@
+{% extends "base.html" %}
+{% block title %}§39 BSIG Compliance-Bericht — NIS2{% endblock %}
+
+{% block extra_head %}
+<style>
+  .gap-critical { border-left: 4px solid #dc3545; }
+  .gap-high     { border-left: 4px solid #fd7e14; }
+  .gap-medium   { border-left: 4px solid #ffc107; }
+  .gap-low      { border-left: 4px solid #0dcaf0; }
+
+  .status-dot {
+    width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+  }
+  .measure-card { transition: box-shadow .15s; }
+  .measure-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+
+  @media print {
+    .sidebar, .topbar, .no-print { display: none !important; }
+    .main-wrapper { margin-left: 0 !important; }
+    .card { break-inside: avoid; }
+    body { background: #fff !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3" style="max-width:1200px">
+
+  {# ── Header ──────────────────────────────────────────────────── #}
+  <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <nav aria-label="breadcrumb" class="mb-1">
+        <ol class="breadcrumb small mb-0">
+          <li class="breadcrumb-item"><a href="{{ url_for('nis2.dashboard') }}">NIS2</a></li>
+          <li class="breadcrumb-item active">§39 Compliance-Bericht</li>
+        </ol>
+      </nav>
+      <h1 class="h3 mb-0">§39 BSIG — Compliance-Bericht</h1>
+      <div class="text-muted small">
+        Erstellt: {{ generated_at.strftime('%d.%m.%Y um %H:%M Uhr UTC') }} &nbsp;·&nbsp;
+        Nutzer: {{ current_user.display_name }}
+      </div>
+    </div>
+    <div class="d-flex gap-2 no-print">
+      <a href="{{ url_for('nis2.compliance_report') }}?pdf=1"
+         class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-download me-1"></i> Als HTML herunterladen
+      </a>
+      <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-printer me-1"></i> Drucken / PDF
+      </button>
+    </div>
+  </div>
+
+  {# ── Overall score banner ─────────────────────────────────────── #}
+  {% set total = score_data.total_score %}
+  {% set score_cls = 'success' if total >= 75 else ('warning' if total >= 40 else 'danger') %}
+  <div class="card mb-4 border-{{ score_cls }} border-2">
+    <div class="card-body">
+      <div class="row align-items-center g-3">
+        <div class="col-auto">
+          <div class="score-ring {{ 'good' if total >= 75 else ('partial' if total >= 40 else 'poor') }}"
+               style="width:90px;height:90px;font-size:1.5rem;">
+            {{ total|int }}%
+          </div>
+        </div>
+        <div class="col">
+          <h5 class="mb-1">Gesamtkonformität §30 BSIG</h5>
+          <div class="d-flex gap-3 flex-wrap">
+            <span class="badge bg-success">{{ score_data.complete_count }} vollständig</span>
+            <span class="badge bg-warning text-dark">{{ score_data.partial_count }} teilweise</span>
+            <span class="badge bg-danger">{{ score_data.open_count }} offen</span>
+          </div>
+          <div class="text-muted small mt-1">
+            ISMS-Dokumente: {{ isms_complete }}/{{ isms_total }} &nbsp;·&nbsp;
+            Schulungen: {{ trainings_summary.total }} &nbsp;·&nbsp;
+            Lieferanten: {{ supply_chain_summary.total }}
+          </div>
+        </div>
+        <div class="col-md-4 text-md-end">
+          {% if bsi_reg and bsi_reg.is_complete %}
+            <span class="badge bg-success fs-6">
+              <i class="bi bi-building-check me-1"></i> §33 BSI registriert
+            </span>
+          {% else %}
+            <span class="badge bg-danger fs-6">
+              <i class="bi bi-building-x me-1"></i> §33 BSI-Registrierung ausstehend
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Gap Analysis (top) ───────────────────────────────────────── #}
+  {% if gaps %}
+  <div class="card mb-4">
+    <div class="card-header">
+      <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+      Gap-Analyse — {{ gaps|length }} Handlungsbedarf{{ 'e' if gaps|length != 1 else '' }}
+    </div>
+    <div class="card-body p-0">
+      {% for gap in gaps %}
+      <div class="p-3 gap-{{ gap.severity }} border-bottom">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <span class="badge bg-{{ 'danger' if gap.severity == 'critical'
+                                     else ('warning text-dark' if gap.severity == 'high'
+                                     else ('warning text-dark' if gap.severity == 'medium'
+                                     else 'info text-dark')) }} me-2">
+              {{ gap.severity | upper }}
+            </span>
+            <span class="badge bg-secondary me-2">{{ gap.paragraph }}</span>
+            <strong>{{ gap.title }}</strong>
+            <div class="text-muted small mt-1">{{ gap.description }}</div>
+          </div>
+          <a href="{{ gap.action_url }}" class="btn btn-sm btn-outline-primary no-print flex-shrink-0">
+            {{ gap.action }} <i class="bi bi-arrow-right ms-1"></i>
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-success mb-4">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <strong>Keine kritischen Lücken identifiziert.</strong> Alle wesentlichen NIS2-Anforderungen sind abgedeckt.
+  </div>
+  {% endif %}
+
+  <div class="row g-4">
+
+    {# ══════════════════════════════════════════════════
+       LEFT: §30 Measures + §38 + §33
+    ══════════════════════════════════════════════════ #}
+    <div class="col-lg-6">
+
+      {# §30 Maßnahmen-Übersicht #}
+      <div class="card mb-4">
+        <div class="card-header">
+          <i class="bi bi-shield-check me-1"></i> §30 BSIG — 10 Pflichtmaßnahmen
+        </div>
+        <div class="list-group list-group-flush">
+          {% for key, m in score_data.measures.items() %}
+          <div class="list-group-item measure-card px-3 py-2">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi {{ m.icon }} text-muted" style="width:1.2rem"></i>
+              <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <span class="badge bg-secondary me-1 small">{{ m.paragraph }}</span>
+                    <span class="small fw-semibold">{{ m.label }}</span>
+                  </div>
+                  <span class="badge rounded-pill
+                    bg-{{ 'success' if m.status == 'complete'
+                          else ('warning text-dark' if m.status == 'partial'
+                          else 'danger') }}">
+                    {{ m.score|int }}%
+                  </span>
+                </div>
+                <div class="progress mt-1" style="height:4px">
+                  <div class="progress-bar bg-{{ 'success' if m.status == 'complete'
+                                                  else ('warning' if m.status == 'partial'
+                                                  else 'danger') }}"
+                       style="width:{{ m.score }}%"></div>
+                </div>
+                {% if m.detail is defined %}
+                  <div class="text-muted" style="font-size:.72rem">{{ m.detail }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# §38 BSIG — GF-Bestätigung #}
+      <div class="card mb-4">
+        <div class="card-header">
+          <i class="bi bi-person-check me-1"></i> §38 BSIG — Persönliche Verantwortung der Geschäftsleitung
+        </div>
+        <div class="card-body">
+          {% if par38_status == 'complete' %}
+            <div class="d-flex gap-2 align-items-center mb-2">
+              <span class="badge bg-success">ERFÜLLT</span>
+              <span class="small">GF-Bestätigung liegt vor und Mitarbeiter-Schulungen wurden abgeschlossen.</span>
+            </div>
+          {% elif par38_status == 'partial' %}
+            <div class="d-flex gap-2 align-items-center mb-2">
+              <span class="badge bg-warning text-dark">TEILWEISE</span>
+              <span class="small">GF-Bestätigung liegt vor, aber Mitarbeiter-Schulungen noch ausstehend.</span>
+            </div>
+          {% else %}
+            <div class="d-flex gap-2 align-items-center mb-2">
+              <span class="badge bg-danger">OFFEN</span>
+              <span class="small">Keine GF-Bestätigung für Schulungen vorhanden.</span>
+            </div>
+          {% endif %}
+
+          <table class="table table-sm mb-0 small">
+            <tbody>
+              <tr>
+                <td class="text-muted">Schulungen gesamt</td>
+                <td><strong>{{ trainings_summary.total }}</strong></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Davon GF-bestätigt (§38)</td>
+                <td>
+                  <strong>{{ trainings_summary.gf_acknowledged }}</strong>
+                  {% if trainings_summary.gf_pending > 0 %}
+                    <span class="text-warning ms-1">({{ trainings_summary.gf_pending }} ausstehend)</span>
+                  {% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td class="text-muted">Mitarbeiter-Bestätigungen</td>
+                <td>
+                  <strong>{{ trainings_summary.total_recipients_confirmed }}</strong> /
+                  {{ trainings_summary.total_recipients_sent }} versendet
+                  {% if trainings_summary.total_recipients_sent > 0 %}
+                    <span class="text-muted">({{ trainings_summary.completion_rate }}%)</span>
+                  {% endif %}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# §33 BSI-Registrierung #}
+      <div class="card mb-4">
+        <div class="card-header">
+          <i class="bi bi-building-check me-1"></i> §33 BSIG — BSI-Registrierung
+        </div>
+        <div class="card-body">
+          {% if bsi_reg %}
+            {% if bsi_reg.is_complete %}
+              <span class="badge bg-success mb-2">ABGESCHLOSSEN</span>
+            {% else %}
+              <span class="badge bg-warning text-dark mb-2">SCHRITT {{ bsi_reg.wizard_step }}/4</span>
+            {% endif %}
+            <table class="table table-sm mb-0 small">
+              <tbody>
+                {% if bsi_reg.company_name %}
+                <tr>
+                  <td class="text-muted">Unternehmen</td>
+                  <td><strong>{{ bsi_reg.company_name }}</strong></td>
+                </tr>
+                {% endif %}
+                {% if bsi_reg.entity_type %}
+                <tr>
+                  <td class="text-muted">Einrichtungstyp</td>
+                  <td>{{ bsi_reg.entity_type_label }}</td>
+                </tr>
+                {% endif %}
+                {% if bsi_reg.sector %}
+                <tr>
+                  <td class="text-muted">Sektor</td>
+                  <td>{{ bsi_reg.sector }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                  <td class="text-muted">Zuletzt aktualisiert</td>
+                  <td>{{ bsi_reg.updated_at.strftime('%d.%m.%Y') if bsi_reg.updated_at else '–' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          {% else %}
+            <div class="text-danger">
+              <i class="bi bi-x-circle me-1"></i>
+              BSI-Registrierung noch nicht gestartet. Pflicht nach §33 BSIG.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>{# /col-lg-6 left #}
+
+    {# ══════════════════════════════════════════════════
+       RIGHT: ISMS Docs + Incidents + Supply Chain
+    ══════════════════════════════════════════════════ #}
+    <div class="col-lg-6">
+
+      {# ISMS Documents #}
+      <div class="card mb-4">
+        <div class="card-header">
+          <i class="bi bi-file-earmark-text me-1"></i>
+          ISMS-Dokumente — {{ isms_complete }}/{{ isms_total }} vorhanden
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 align-middle small">
+            <thead class="table-light">
+              <tr>
+                <th>Dokument</th>
+                <th>Ref.</th>
+                <th>Status</th>
+                <th>Überprüfung</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in isms_rows %}
+              <tr>
+                <td>{{ row.title }}</td>
+                <td class="text-muted">{{ row.paragraph }}</td>
+                <td>
+                  {% if row.exists %}
+                    <span class="badge bg-success">
+                      <i class="bi bi-check2"></i> Vorhanden
+                    </span>
+                  {% else %}
+                    <span class="badge bg-danger">
+                      <i class="bi bi-x"></i> Fehlt
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="text-muted">
+                  {% if row.doc and row.doc.next_review_date %}
+                    {{ row.doc.next_review_date.strftime('%d.%m.%Y') }}
+                    {% if row.doc.review_overdue %}
+                      <span class="text-danger ms-1"><i class="bi bi-exclamation-circle"></i></span>
+                    {% endif %}
+                  {% else %}
+                    –
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# §32 Incidents #}
+      <div class="card mb-4">
+        <div class="card-header">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          §32 BSIG — Meldepflicht Sicherheitsvorfälle
+        </div>
+        <div class="card-body">
+          <div class="row g-2 text-center mb-3">
+            <div class="col-4">
+              <div class="fw-bold fs-4 {{ 'text-danger' if incidents_summary.open > 0 else 'text-success' }}">
+                {{ incidents_summary.open }}
+              </div>
+              <div class="text-muted small">Offen</div>
+            </div>
+            <div class="col-4">
+              <div class="fw-bold fs-4 text-secondary">{{ incidents_summary.total }}</div>
+              <div class="text-muted small">Gesamt</div>
+            </div>
+            <div class="col-4">
+              <div class="fw-bold fs-4 {{ 'text-success' if incidents_summary.reporting_compliant else 'text-danger' }}">
+                {% if incidents_summary.reporting_compliant %}
+                  <i class="bi bi-check-circle-fill"></i>
+                {% else %}
+                  <i class="bi bi-x-circle-fill"></i>
+                {% endif %}
+              </div>
+              <div class="text-muted small">Fristen</div>
+            </div>
+          </div>
+
+          {% if not incidents_summary.reporting_compliant %}
+          <div class="alert alert-danger py-2 small mb-2">
+            {% if incidents_summary.fruehwarnung_overdue > 0 %}
+              <div><i class="bi bi-clock-history me-1"></i>
+                {{ incidents_summary.fruehwarnung_overdue }} Frühwarnung(en) überfällig (24h-Frist)</div>
+            {% endif %}
+            {% if incidents_summary.zwischenmeldung_overdue > 0 %}
+              <div><i class="bi bi-clock-history me-1"></i>
+                {{ incidents_summary.zwischenmeldung_overdue }} Zwischenmeldung(en) überfällig (72h-Frist)</div>
+            {% endif %}
+            {% if incidents_summary.abschlussbericht_overdue > 0 %}
+              <div><i class="bi bi-clock-history me-1"></i>
+                {{ incidents_summary.abschlussbericht_overdue }} Abschlussbericht(e) überfällig (30-Tage-Frist)</div>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          {% if incidents %}
+          <div class="table-responsive">
+            <table class="table table-sm mb-0 small">
+              <thead class="table-light">
+                <tr><th>Ref.</th><th>Titel</th><th>Status</th><th>§32-Fristen</th></tr>
+              </thead>
+              <tbody>
+                {% for inc in incidents[:8] %}
+                <tr>
+                  <td class="text-muted">{{ inc.incident_ref or '–' }}</td>
+                  <td>{{ inc.title | truncate(40) }}</td>
+                  <td>
+                    <span class="badge bg-{{ inc.status_color }}">{{ inc.status }}</span>
+                  </td>
+                  <td>
+                    {% set fw_ok = inc.fruehwarnung_sent or not inc.fruehwarnung_deadline %}
+                    {% set zm_ok = inc.zwischenmeldung_sent or not inc.zwischenmeldung_deadline %}
+                    {% set ab_ok = inc.abschlussbericht_sent or not inc.abschlussbericht_deadline %}
+                    {% if fw_ok and zm_ok and ab_ok %}
+                      <i class="bi bi-check-circle-fill text-success"></i>
+                    {% else %}
+                      <i class="bi bi-exclamation-circle-fill text-danger"></i>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-muted small text-center">Keine Sicherheitsvorfälle erfasst.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Monitoring #}
+      <div class="card mb-4">
+        <div class="card-header">
+          <i class="bi bi-radar me-1"></i>
+          §30 Nr. 5/6 — Schwachstellenmanagement & Monitoring
+        </div>
+        <div class="card-body">
+          <div class="row g-2 text-center mb-2">
+            <div class="col-3">
+              <div class="fw-bold fs-4">{{ monitoring_summary.targets }}</div>
+              <div class="text-muted small">Targets</div>
+            </div>
+            <div class="col-3">
+              <div class="fw-bold fs-4">{{ monitoring_summary.scans_this_year }}</div>
+              <div class="text-muted small">Scans {{ generated_at.year }}</div>
+            </div>
+            <div class="col-3">
+              <div class="fw-bold fs-4 {{ 'text-success' if monitoring_summary.avg_score and monitoring_summary.avg_score >= 80 else ('text-warning' if monitoring_summary.avg_score else 'text-muted') }}">
+                {{ monitoring_summary.avg_score or '–' }}
+              </div>
+              <div class="text-muted small">Ø Score</div>
+            </div>
+            <div class="col-3">
+              <div class="fw-bold fs-4 {{ 'text-danger' if monitoring_summary.targets_below_60 > 0 else 'text-success' }}">
+                {{ monitoring_summary.targets_below_60 }}
+              </div>
+              <div class="text-muted small">&lt;60 Score</div>
+            </div>
+          </div>
+          {% if targets %}
+          <table class="table table-sm mb-0 small">
+            <thead class="table-light">
+              <tr><th>Domain</th><th>Letzter Scan</th><th>Score</th></tr>
+            </thead>
+            <tbody>
+              {% for t in targets %}
+              <tr>
+                <td>{{ t.domain }}</td>
+                <td class="text-muted">{{ t.last_scan_at.strftime('%d.%m.%Y') if t.last_scan_at else '–' }}</td>
+                <td>
+                  {% if t.last_score is not none %}
+                    <span class="badge bg-{{ t.score_color }}">{{ t.last_score|int }}</span>
+                  {% else %}
+                    <span class="text-muted">–</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Supply Chain #}
+      <div class="card mb-4">
+        <div class="card-header">
+          <i class="bi bi-diagram-3 me-1"></i>
+          §30 Nr. 4 — Lieferkettensicherheit
+        </div>
+        <div class="card-body">
+          <div class="row g-2 text-center mb-2">
+            <div class="col-3">
+              <div class="fw-bold fs-4">{{ supply_chain_summary.total }}</div>
+              <div class="text-muted small">Lieferanten</div>
+            </div>
+            <div class="col-3">
+              <div class="fw-bold fs-4 {{ 'text-success' if supply_chain_summary.assessment_rate >= 80 else 'text-warning' }}">
+                {{ supply_chain_summary.assessment_rate }}%
+              </div>
+              <div class="text-muted small">Bewertet</div>
+            </div>
+            <div class="col-3">
+              <div class="fw-bold fs-4 {{ 'text-danger' if supply_chain_summary.avv_overdue > 0 else 'text-success' }}">
+                {{ supply_chain_summary.avv_signed }}
+              </div>
+              <div class="text-muted small">AVV sign.</div>
+            </div>
+            <div class="col-3">
+              <div class="fw-bold fs-4 {{ 'text-danger' if supply_chain_summary.high_risk > 0 else 'text-success' }}">
+                {{ supply_chain_summary.high_risk }}
+              </div>
+              <div class="text-muted small">Hochrisiko</div>
+            </div>
+          </div>
+          {% if suppliers %}
+          <table class="table table-sm mb-0 small">
+            <thead class="table-light">
+              <tr><th>Lieferant</th><th>Kritikalität</th><th>Risiko</th><th>AVV</th></tr>
+            </thead>
+            <tbody>
+              {% for s in suppliers[:8] %}
+              <tr>
+                <td>{{ s.company_name | truncate(30) }}</td>
+                <td>
+                  <span class="badge bg-{{ 'danger' if s.criticality == 'critical'
+                                           else ('warning text-dark' if s.criticality == 'high'
+                                           else 'secondary') }}">
+                    {{ s.criticality }}
+                  </span>
+                </td>
+                <td>
+                  {% if s.risk_score is not none %}
+                    <span class="badge bg-{{ s.risk_color }}">{{ s.risk_score|int }}</span>
+                  {% else %}
+                    <span class="text-muted">–</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if s.avv_exists %}
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                  {% else %}
+                    <i class="bi bi-x-circle text-danger"></i>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+            <div class="text-muted small text-center">Keine Lieferanten erfasst.</div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>{# /col-lg-6 right #}
+  </div>{# /row #}
+
+  {# ── Trainings table ──────────────────────────────────────────── #}
+  {% if trainings %}
+  <div class="card mb-4">
+    <div class="card-header">
+      <i class="bi bi-mortarboard me-1"></i>
+      §30 Nr. 7 / §38 BSIG — Schulungen
+      <span class="badge bg-secondary ms-2">{{ trainings|length }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle small">
+        <thead class="table-light">
+          <tr>
+            <th>Schulung</th>
+            <th>Thema</th>
+            <th>Status</th>
+            <th>§38 GF-Best.</th>
+            <th>Mitarbeiter</th>
+            <th>Fällig</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in trainings %}
+          <tr>
+            <td>
+              <a href="{{ url_for('nis2.training_detail', training_id=t.id) }}">
+                {{ t.title | truncate(50) }}
+              </a>
+            </td>
+            <td class="text-muted">{{ t.topic_label }}</td>
+            <td>
+              <span class="badge
+                {% if t.status == 'draft' %}bg-secondary
+                {% elif t.status == 'sent' %}bg-primary
+                {% else %}bg-success{% endif %}">
+                {{ t.status | upper }}
+              </span>
+            </td>
+            <td>
+              {% if t.gf_acknowledged %}
+                <span class="text-success">
+                  <i class="bi bi-person-check-fill me-1"></i>{{ t.gf_acknowledged_name | truncate(25) }}
+                </span>
+                <div class="text-muted" style="font-size:.7rem">
+                  {{ t.gf_acknowledged_at.strftime('%d.%m.%Y %H:%M') }}
+                </div>
+              {% else %}
+                <span class="text-warning">
+                  <i class="bi bi-exclamation-circle me-1"></i>Ausstehend
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              {% if t.sent_count > 0 %}
+                {{ t.ack_count }}/{{ t.sent_count }}
+                <div class="progress mt-1" style="height:3px;width:60px">
+                  <div class="progress-bar bg-success"
+                       style="width:{{ (t.ack_count / t.sent_count * 100)|int }}%"></div>
+                </div>
+              {% else %}
+                <span class="text-muted">–</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">
+              {{ t.due_date.strftime('%d.%m.%Y') if t.due_date else '–' }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Footer ───────────────────────────────────────────────────── #}
+  <div class="card bg-light border-0 mb-4">
+    <div class="card-body small text-muted">
+      <div class="row g-2">
+        <div class="col-md-8">
+          <strong>§39 BSIG — Nachweis auf Verlangen:</strong>
+          Dieser Bericht dient als Compliance-Nachweis gemäß §39 BSIG für Behörden und Prüfer.
+          Er dokumentiert die Umsetzung der Anforderungen aus §30 (technische/organisatorische Maßnahmen),
+          §32 (Meldepflichten), §33 (BSI-Registrierung) und §38 (persönliche Verantwortung der Geschäftsleitung).
+          Bericht-Zeitstempel und Nutzerdaten sind für den Audit Trail gespeichert.
+        </div>
+        <div class="col-md-4 text-md-end">
+          <div>NIS2UmsuCG / BSIG (Stand: 6. Dez. 2025)</div>
+          <div>Erstellt: {{ generated_at.strftime('%d.%m.%Y %H:%M UTC') }}</div>
+          <div>Plattform: NIS2 Compliance Platform</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Blog-Verwaltung — Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h1 class="h4 fw-700 mb-0">
+      <i class="bi bi-newspaper me-2 text-primary"></i>Blog-Verwaltung
+    </h1>
+    <div class="d-flex gap-2">
+      <form method="POST" action="{{ url_for('admin.blog_trigger_news') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-outline-danger fw-600">
+          <i class="bi bi-rss me-1"></i>News jetzt holen
+        </button>
+      </form>
+      <form method="POST" action="{{ url_for('admin.blog_trigger_evergreen') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-outline-primary fw-600">
+          <i class="bi bi-lightning me-1"></i>Evergreen generieren
+        </button>
+      </form>
+      <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Dashboard
+      </a>
+      <a href="{{ url_for('blog.index') }}" class="btn btn-sm btn-outline-secondary" target="_blank">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Blog ansehen
+      </a>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }} alert-dismissible fade show">{{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <!-- Stats row -->
+  <div class="row g-3 mb-4">
+    {% set pub = posts | selectattr('is_published') | list %}
+    {% set draft = posts | rejectattr('is_published') | list %}
+    {% set news_posts = posts | selectattr('is_news') | list %}
+    {% set evergreen_posts = posts | rejectattr('is_news') | list %}
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fw-700 fs-3 text-primary">{{ posts|length }}</div>
+        <div class="small text-muted">Gesamt</div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fw-700 fs-3 text-success">{{ pub|length }}</div>
+        <div class="small text-muted">Veröffentlicht</div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fw-700 fs-3 text-danger">{{ news_posts|length }}</div>
+        <div class="small text-muted">News</div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="fw-700 fs-3 text-info">{{ evergreen_posts|length }}</div>
+        <div class="small text-muted">Evergreen</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Posts table -->
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th style="width:40%">Titel</th>
+            <th>Kategorie</th>
+            <th>Tags</th>
+            <th>Status</th>
+            <th>Datum</th>
+            <th>Aktion</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for post in posts %}
+          <tr>
+            <td>
+              <div class="fw-600" style="font-size:.88rem;">
+                <a href="{{ url_for('blog.article', slug=post.slug) }}"
+                   class="text-decoration-none text-dark" target="_blank">
+                  {{ post.title[:80] }}{% if post.title|length > 80 %}…{% endif %}
+                </a>
+              </div>
+              <div class="text-muted" style="font-size:.75rem;">/blog/{{ post.slug }}</div>
+            </td>
+            <td>
+              {% if post.is_news %}
+                <span class="badge bg-danger-subtle text-danger">NEWS</span>
+                <div class="text-muted" style="font-size:.72rem;">{{ post.source_name }}</div>
+              {% else %}
+                <span class="badge bg-primary-subtle text-primary">EVERGREEN</span>
+              {% endif %}
+            </td>
+            <td>
+              {% for tag in post.tags[:3] %}
+                <span class="badge bg-light text-secondary border" style="font-size:.7rem;">{{ tag.name }}</span>
+              {% endfor %}
+            </td>
+            <td>
+              {% if post.is_published %}
+                <span class="badge bg-success">✓ Live</span>
+              {% else %}
+                <span class="badge bg-secondary">Entwurf</span>
+              {% endif %}
+            </td>
+            <td style="font-size:.8rem; white-space:nowrap;">
+              {{ post.display_date }}
+            </td>
+            <td>
+              <form method="POST"
+                    action="{{ url_for('admin.blog_toggle', post_id=post.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-xs btn-outline-{% if post.is_published %}warning{% else %}success{% endif %}"
+                        style="font-size:.75rem; padding:2px 8px;">
+                  {% if post.is_published %}Zurückziehen{% else %}Veröffentlichen{% endif %}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">
+              Noch keine Blog-Artikel. Klicken Sie auf "News jetzt holen" oder "Evergreen generieren".
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

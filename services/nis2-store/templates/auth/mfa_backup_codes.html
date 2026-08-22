@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}MFA Backup-Codes — NIS2{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:560px">
+  <div class="card border-success border-2 shadow-sm">
+    <div class="card-header bg-success text-white fw-semibold">
+      <i class="bi bi-shield-check-fill me-1"></i> MFA erfolgreich aktiviert
+    </div>
+    <div class="card-body">
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        <strong>Wichtig:</strong> Speichern Sie diese Backup-Codes an einem sicheren Ort.
+        Jeder Code kann nur <strong>einmal</strong> verwendet werden, falls Sie keinen Zugang zu Ihrer
+        Authenticator-App haben.
+      </div>
+
+      <div class="row g-2 mb-4">
+        {% for code in backup_codes %}
+        <div class="col-6">
+          <div class="border rounded p-2 text-center font-monospace fw-bold fs-5
+                      bg-light user-select-all">
+            {{ code }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="d-flex gap-2">
+        <button onclick="copyBackupCodes()" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-clipboard me-1"></i> Kopieren
+        </button>
+        <a href="{{ url_for('auth.profile') }}" class="btn btn-primary btn-sm ms-auto">
+          <i class="bi bi-check-lg me-1"></i> Fertig
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyBackupCodes() {
+  const codes = {{ backup_codes | tojson }};
+  navigator.clipboard.writeText(codes.join('\n')).then(() => {
+    const btn = document.querySelector('[onclick="copyBackupCodes()"]');
+    btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Kopiert!';
+    setTimeout(() => btn.innerHTML = '<i class="bi bi-clipboard me-1"></i> Kopieren', 2000);
+  });
+}
+</script>
+{% endblock %}

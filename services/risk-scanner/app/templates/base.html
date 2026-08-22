@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Risk Scanner{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">CyberVersiecherung — Risk Scanner</div>
+    {% if agent %}
+    <nav>
+      <span>Angemeldet als {{ agent.display_name or agent.username }}</span>
+      <a href="/">Dashboard</a>
+      <a href="/intake/new">Neue Prüfung</a>
+      <a href="/logout">Logout</a>
+    </nav>
+    {% endif %}
+  </header>
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

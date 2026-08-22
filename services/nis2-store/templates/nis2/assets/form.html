@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Asset bearbeiten' if asset else 'Asset hinzufügen' }} — NIS2{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:820px">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('nis2.dashboard') }}">NIS2</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('nis2.asset_list') }}">IT-Assets</a></li>
+      <li class="breadcrumb-item active">{{ 'Bearbeiten' if asset else 'Neu' }}</li>
+    </ol>
+  </nav>
+
+  <h1 class="h3 mb-4">
+    {{ 'Asset bearbeiten' if asset else 'Neues IT-Asset anlegen' }}
+  </h1>
+
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="row g-4">
+
+      <!-- Identification -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-hdd me-1"></i> Identifikation
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label class="form-label">Name <span class="text-danger">*</span></label>
+                <input type="text" name="name" class="form-control" required
+                       value="{{ asset.name if asset else '' }}"
+                       placeholder="z.B. Produktionsdatenbank, Office 365, Hauptrouter">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Typ</label>
+                <select name="asset_type" class="form-select">
+                  {% for val, label in categories %}
+                    <option value="{{ val }}"
+                      {{ 'selected' if asset and asset.asset_type == val else '' }}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Beschreibung</label>
+                <textarea name="description" class="form-control" rows="2"
+                          placeholder="Kurze Beschreibung des Assets und seines Zwecks">{{ asset.description or '' }}</textarea>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Hersteller / Anbieter</label>
+                <input type="text" name="vendor" class="form-control"
+                       value="{{ asset.vendor or '' }}" placeholder="z.B. Microsoft, AWS">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Version</label>
+                <input type="text" name="version" class="form-control"
+                       value="{{ asset.version or '' }}" placeholder="z.B. 22.04, v3.1.2">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Seriennummer / Asset-ID</label>
+                <input type="text" name="serial_number" class="form-control"
+                       value="{{ asset.serial_number or '' }}">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Network -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-network-wired me-1"></i> Netzwerk / Standort
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Hostname / FQDN</label>
+                <input type="text" name="hostname" class="form-control font-monospace"
+                       value="{{ asset.hostname or '' }}" placeholder="db01.example.com">
+              </div>
+              <div class="col-12">
+                <label class="form-label">IP-Adresse</label>
+                <input type="text" name="ip_address" class="form-control font-monospace"
+                       value="{{ asset.ip_address or '' }}" placeholder="192.168.1.10">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Standort</label>
+                <input type="text" name="location" class="form-control"
+                       value="{{ asset.location or '' }}"
+                       placeholder="Serverraum EG, AWS eu-central-1, Home Office">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ownership -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-person-gear me-1"></i> Verantwortlichkeit
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Verantwortliche Person</label>
+                <input type="text" name="owner_name" class="form-control"
+                       value="{{ asset.owner_name or '' }}" placeholder="Max Mustermann">
+              </div>
+              <div class="col-12">
+                <label class="form-label">E-Mail</label>
+                <input type="email" name="owner_email" class="form-control"
+                       value="{{ asset.owner_email or '' }}" placeholder="max@example.com">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Abteilung</label>
+                <input type="text" name="department" class="form-control"
+                       value="{{ asset.department or '' }}" placeholder="IT, Entwicklung, Marketing">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-shield-exclamation me-1"></i> Kritikalität & Risiko
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Kritikalität</label>
+                <select name="criticality" class="form-select">
+                  {% for val, label in criticalities %}
+                    <option value="{{ val }}"
+                      {{ 'selected' if asset and asset.criticality == val else ('selected' if not asset and val == 'medium' else '') }}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4 d-flex align-items-end pb-1">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="is_internet_facing"
+                         id="internet_facing"
+                         {{ 'checked' if asset and asset.is_internet_facing else '' }}>
+                  <label class="form-check-label" for="internet_facing">
+                    <i class="bi bi-globe2 me-1 text-warning"></i>
+                    Internet-facing (öffentlich erreichbar)
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-4 d-flex align-items-end pb-1">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="stores_personal_data"
+                         id="personal_data"
+                         {{ 'checked' if asset and asset.stores_personal_data else '' }}>
+                  <label class="form-check-label" for="personal_data">
+                    <i class="bi bi-person-lock me-1 text-info"></i>
+                    Speichert personenbezogene Daten (DSGVO Art. 30)
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Patch Management -->
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-patch-check me-1"></i> Patch-Management (§30 Nr. 5)
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label">Patch-Status</label>
+                <select name="patch_status" class="form-select">
+                  <option value="current"  {{ 'selected' if asset and asset.patch_status == 'current'  else '' }}>Aktuell</option>
+                  <option value="outdated" {{ 'selected' if asset and asset.patch_status == 'outdated' else '' }}>Veraltet</option>
+                  <option value="unknown"  {{ 'selected' if not asset or asset.patch_status == 'unknown' else '' }}>Unbekannt</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Zuletzt gepatcht</label>
+                <input type="date" name="last_patched_at" class="form-control"
+                       value="{{ asset.last_patched_at.isoformat() if asset and asset.last_patched_at else '' }}"
+                       max="{{ today.isoformat() }}">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Nächstes Patch-Datum</label>
+                <input type="date" name="next_patch_due" class="form-control"
+                       value="{{ asset.next_patch_due.isoformat() if asset and asset.next_patch_due else '' }}">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Bekannte Schwachstellen / CVEs</label>
+                <textarea name="known_vulnerabilities" class="form-control font-monospace" rows="2"
+                          placeholder="z.B. CVE-2024-1234 (kritisch), Log4Shell-Anfälligkeit prüfen">{{ asset.known_vulnerabilities or '' }}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="col-12">
+        <label class="form-label">Notizen</label>
+        <textarea name="notes" class="form-control" rows="3"
+                  placeholder="Sonstige Hinweise, Konfigurationsbesonderheiten, Abhängigkeiten...">{{ asset.notes or '' }}</textarea>
+      </div>
+
+      <!-- Buttons -->
+      <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>
+          {{ 'Änderungen speichern' if asset else 'Asset anlegen' }}
+        </button>
+        <a href="{{ url_for('nis2.asset_list') }}" class="btn btn-outline-secondary">
+          Abbrechen
+        </a>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

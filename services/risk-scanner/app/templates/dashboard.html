@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Meine Prüfungen</h1>
+<a class="button" href="/intake/new">+ Neue Prüfung starten</a>
+
+<table class="list">
+  <thead>
+    <tr><th>Unternehmen</th><th>Domain</th><th>Branche</th><th>Status</th><th>Risk Tier</th><th>Erstellt</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for a in assessments %}
+    {% set scan = scans.get(a.id) %}
+    <tr>
+      <td>{{ a.company_name }}</td>
+      <td>{{ a.domain }}</td>
+      <td>{{ a.industry }}</td>
+      <td>{{ scan.status if scan else "—" }}</td>
+      <td>
+        {% if scan and scan.risk_tier %}
+          <span class="tier tier-{{ scan.risk_tier }}">{{ scan.risk_tier|upper }}</span>
+        {% else %}—{% endif %}
+      </td>
+      <td>{{ a.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>{% if scan %}<a href="/report/{{ scan.id }}">Bericht ansehen</a>{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7">Noch keine Prüfungen. Starten Sie oben eine neue.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

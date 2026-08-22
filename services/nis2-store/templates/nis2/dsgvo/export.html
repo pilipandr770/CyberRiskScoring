@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Verarbeitungsverzeichnis Art. 30 DSGVO — {{ user.display_name }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #222; margin: 20px; }
+    h1 { font-size: 18px; border-bottom: 2px solid #1a3a5c; padding-bottom: 6px; color: #1a3a5c; }
+    h2 { font-size: 13px; color: #1a3a5c; margin-top: 20px; }
+    .meta { color: #666; font-size: 11px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { background: #1a3a5c; color: #fff; padding: 6px 8px; text-align: left; font-size: 11px; }
+    td { padding: 5px 8px; border-bottom: 1px solid #ddd; vertical-align: top; font-size: 11px; }
+    tr:nth-child(even) td { background: #f8f9fa; }
+    .badge-risk { background: #dc3545; color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 10px; }
+    .badge-ok { background: #198754; color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 10px; }
+    .footer { margin-top: 30px; font-size: 10px; color: #888; border-top: 1px solid #ddd; padding-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Verarbeitungsverzeichnis gemäß Art. 30 DSGVO</h1>
+  <div class="meta">
+    Verantwortlicher: <strong>{{ user.display_name }}</strong>
+    {% if user.company_name %} · {{ user.company_name }}{% endif %}
+    · E-Mail: {{ user.email }}
+    <br>Erstellt: {{ generated_at.strftime('%d.%m.%Y um %H:%M Uhr UTC') }}
+    · Tätigkeiten: {{ activities|length }}
+  </div>
+
+  {% if activities %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Bezeichnung / Zweck</th>
+        <th>Rechtsgrundlage</th>
+        <th>Datenkategorien</th>
+        <th>Betroffene</th>
+        <th>Empfänger</th>
+        <th>Löschfrist</th>
+        <th>Auftragnehmer</th>
+        <th>Risiko</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for act in activities %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          <strong>{{ act.name }}</strong><br>
+          <span style="color:#555">{{ act.purpose | truncate(80) }}</span>
+        </td>
+        <td>{{ act.legal_basis_label }}</td>
+        <td>{{ act.get_data_categories() | join(', ') or '–' }}</td>
+        <td>{{ act.get_data_subjects() | join(', ') or '–' }}</td>
+        <td>{{ act.recipients or '–' }}</td>
+        <td>{{ act.retention_period or '–' }}</td>
+        <td>
+          {{ act.processor.company_name if act.processor else (act.processor_name or '–') }}
+        </td>
+        <td>
+          {% if act.is_high_risk %}
+            <span class="badge-risk">HOCH</span>
+            {% if not act.dsfa_done %}<br><span style="color:#dc3545;font-size:10px">DSFA ausstehend</span>{% endif %}
+          {% else %}
+            <span class="badge-ok">OK</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>Keine Verarbeitungstätigkeiten erfasst.</p>
+  {% endif %}
+
+  <div class="footer">
+    Dieses Dokument dient als Nachweis gemäß Art. 30 DSGVO.
+    Erstellt mit NIS2 Compliance Platform · {{ generated_at.strftime('%d.%m.%Y') }}
+  </div>
+</body>
+</html>

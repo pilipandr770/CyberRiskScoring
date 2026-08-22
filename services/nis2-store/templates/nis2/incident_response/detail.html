@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block title %}{{ incident.title }} — NIS2 Vorfall{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <a href="{{ url_for('nis2.incidents_list') }}" class="text-muted text-decoration-none small">
+        <i class="bi bi-arrow-left"></i> Alle Vorfälle
+      </a>
+      <h4 class="mt-1 mb-0">
+        <span class="badge bg-{{ incident.severity_color }} me-2">{{ incident.severity|upper }}</span>
+        {{ incident.title }}
+      </h4>
+      <small class="text-muted">Erkannt: {{ incident.detected_at.strftime('%d.%m.%Y %H:%M') }} | Status: <strong>{{ incident.status }}</strong></small>
+    </div>
+    <span class="badge bg-{{ incident.status_color }} fs-6">{{ incident.status|upper }}</span>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left: incident info -->
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <h6 class="fw-bold mb-3"><i class="bi bi-info-circle text-primary"></i> Vorfallsdetails</h6>
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <small class="text-muted">Beschreibung</small>
+              <p>{{ incident.description }}</p>
+            </div>
+            <div class="col-md-6">
+              <small class="text-muted">Kategorie</small>
+              <p>{{ incident.category }}</p>
+            </div>
+          </div>
+          {% if incident.affected_systems %}
+          <small class="text-muted">Betroffene Systeme</small>
+          <p>{{ incident.affected_systems }}</p>
+          {% endif %}
+          {% if incident.affected_data %}
+          <small class="text-muted">Betroffene Daten</small>
+          <p>{{ incident.affected_data }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- BSI Meldungen -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header">
+          <strong><i class="bi bi-send text-danger"></i> BSI-Meldepflichten</strong>
+        </div>
+        <div class="card-body p-0">
+          <table class="table mb-0">
+            <thead class="table-light">
+              <tr><th>Meldungsart</th><th>Frist</th><th>Status</th><th>Aktion</th></tr>
+            </thead>
+            <tbody>
+              {% set stages = [
+                ('fruehwarnung', 'Frühwarnung (24h)', incident.fruehwarnung_deadline, incident.fruehwarnung_sent),
+                ('zwischenmeldung', 'Zwischenmeldung (72h)', incident.zwischenmeldung_deadline, incident.zwischenmeldung_sent),
+                ('abschlussbericht', 'Abschlussbericht (30 Tage)', incident.abschlussbericht_deadline, incident.abschlussbericht_sent),
+              ] %}
+              {% for stage_key, stage_label, deadline, is_sent in stages %}
+              <tr>
+                <td class="fw-semibold">{{ stage_label }}</td>
+                <td>{{ deadline.strftime('%d.%m.%Y %H:%M') if deadline else '—' }}</td>
+                <td>
+                  {% if is_sent %}
+                    <span class="text-success"><i class="bi bi-check-circle"></i> Gesendet</span>
+                  {% elif deadline and now > deadline %}
+                    <span class="text-danger fw-bold"><i class="bi bi-alarm"></i> ÜBERFÄLLIG</span>
+                  {% elif deadline %}
+                    <span class="text-warning">Ausstehend</span>
+                  {% else %}—{% endif %}
+                </td>
+                <td>
+                  {% set draft = drafts.get(stage_key) %}
+                  {% if draft %}
+                    <a href="{{ url_for('nis2.incident_draft_view', incident_id=incident.id, draft_id=draft.id) }}"
+                       class="btn btn-sm btn-outline-primary me-1">
+                      <i class="bi bi-eye"></i> Entwurf
+                    </a>
+                  {% else %}
+                    <button class="btn btn-sm btn-outline-danger" data-stage="{{ stage_key }}"
+                            onclick="generateDraft(this)">
+                      <i class="bi bi-magic"></i> KI-Entwurf
+                    </button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header d-flex justify-content-between">
+          <strong><i class="bi bi-clock-history"></i> Zeitlinie</strong>
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#addTimelineModal">
+            + Eintrag
+          </button>
+        </div>
+        <div class="card-body">
+          {% if timeline %}
+          <div class="timeline">
+            {% for entry in timeline %}
+            <div class="d-flex gap-3 mb-3">
+              <div class="text-muted small" style="min-width:120px">
+                {{ entry.timestamp.strftime('%d.%m %H:%M') }}
+              </div>
+              <div>
+                <div class="fw-semibold small">{{ entry.action }}</div>
+                {% if entry.details %}<div class="text-muted small">{{ entry.details }}</div>{% endif %}
+                <div class="text-muted" style="font-size:.7rem">{{ entry.performed_by }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-muted small text-center">Noch keine Einträge in der Zeitlinie</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: update status -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header"><strong>Status aktualisieren</strong></div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('nis2.incident_update', incident_id=incident.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="status" class="form-select form-select-sm mb-2">
+              {% for s in ['open','investigating','contained','resolved','closed'] %}
+              <option {{ 'selected' if incident.status == s }}>{{ s }}</option>
+              {% endfor %}
+            </select>
+            <input type="text" name="note" class="form-control form-control-sm mb-2"
+                   placeholder="Notiz (optional)">
+            <button class="btn btn-sm btn-primary w-100">Aktualisieren</button>
+          </form>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('nis2.incident_delete', incident_id=incident.id) }}"
+              class="flex-grow-1" onsubmit="return confirm('Vorfall wirklich löschen?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-outline-danger btn-sm w-100"><i class="bi bi-trash"></i> Löschen</button>
+        </form>
+      </div>
+
+      <!-- ── Nächste Schritte Anleitung ── -->
+      <div class="card border-info shadow-sm mt-3">
+        <div class="card-header bg-info bg-opacity-10 border-info py-2">
+          <strong class="small"><i class="bi bi-lightbulb text-info me-1"></i> Nächste Schritte</strong>
+        </div>
+        <div class="card-body p-3 small">
+
+          {% if not incident.fruehwarnung_sent %}
+          <div class="d-flex gap-2 mb-3">
+            <div class="flex-shrink-0 mt-1">
+              <span class="badge bg-danger rounded-circle" style="width:22px;height:22px;line-height:14px">1</span>
+            </div>
+            <div>
+              <div class="fw-semibold">Frühwarnung ans BSI (24h)</div>
+              {% if incident.fruehwarnung_deadline and now > incident.fruehwarnung_deadline %}
+                <span class="text-danger"><i class="bi bi-alarm"></i> ÜBERFÄLLIG — sofort handeln!</span>
+              {% else %}
+                <span class="text-warning">Frist: {{ incident.fruehwarnung_deadline.strftime('%d.%m.%Y %H:%M') if incident.fruehwarnung_deadline else '—' }}</span>
+              {% endif %}
+              <div class="text-muted mt-1">Klicken Sie auf <strong>„KI-Entwurf"</strong> bei der Frühwarnung, dann Text ins
+                <a href="https://muk.bsi.bund.de" target="_blank" rel="noopener">BSI MUK-Portal</a> kopieren.</div>
+            </div>
+          </div>
+          {% else %}
+          <div class="d-flex gap-2 mb-3 text-success">
+            <i class="bi bi-check-circle-fill mt-1"></i>
+            <div><div class="fw-semibold">Frühwarnung eingereicht</div></div>
+          </div>
+          {% endif %}
+
+          {% if not incident.zwischenmeldung_sent %}
+          <div class="d-flex gap-2 mb-3">
+            <div class="flex-shrink-0 mt-1">
+              <span class="badge bg-warning text-dark rounded-circle" style="width:22px;height:22px;line-height:14px">2</span>
+            </div>
+            <div>
+              <div class="fw-semibold">Zwischenmeldung (72h)</div>
+              <span class="text-muted">Frist: {{ incident.zwischenmeldung_deadline.strftime('%d.%m.%Y %H:%M') if incident.zwischenmeldung_deadline else '—' }}</span>
+              <div class="text-muted mt-1">Erste Bewertung: Art des Vorfalls, Umfang, ergriffene Maßnahmen.</div>
+            </div>
+          </div>
+          {% else %}
+          <div class="d-flex gap-2 mb-3 text-success">
+            <i class="bi bi-check-circle-fill mt-1"></i>
+            <div><div class="fw-semibold">Zwischenmeldung eingereicht</div></div>
+          </div>
+          {% endif %}
+
+          {% if not incident.abschlussbericht_sent %}
+          <div class="d-flex gap-2 mb-3">
+            <div class="flex-shrink-0 mt-1">
+              <span class="badge bg-secondary rounded-circle" style="width:22px;height:22px;line-height:14px">3</span>
+            </div>
+            <div>
+              <div class="fw-semibold">Abschlussbericht (30 Tage)</div>
+              <span class="text-muted">Frist: {{ incident.abschlussbericht_deadline.strftime('%d.%m.%Y') if incident.abschlussbericht_deadline else '—' }}</span>
+              <div class="text-muted mt-1">Root-Cause, alle Maßnahmen, Lessons Learned.</div>
+            </div>
+          </div>
+          {% else %}
+          <div class="d-flex gap-2 mb-3 text-success">
+            <i class="bi bi-check-circle-fill mt-1"></i>
+            <div><div class="fw-semibold">Abschlussbericht eingereicht</div></div>
+          </div>
+          {% endif %}
+
+          {% if incident.dsgvo_relevant %}
+          <hr class="my-2">
+          <div class="d-flex gap-2 mb-2">
+            <div class="flex-shrink-0 mt-1">
+              <span class="badge bg-info rounded-circle" style="width:22px;height:22px;line-height:14px">4</span>
+            </div>
+            <div>
+              <div class="fw-semibold">DSGVO Art. 33 (72h)</div>
+              {% if incident.dpa_notification_sent %}
+                <span class="text-success"><i class="bi bi-check-circle"></i> Eingereicht</span>
+              {% else %}
+                <span class="text-danger">Aufsichtsbehörde benachrichtigen!</span>
+              {% endif %}
+              <div class="text-muted mt-1">Personenbezogene Daten betroffen — KI-Entwurf nutzen.</div>
+            </div>
+          </div>
+          {% endif %}
+
+          <hr class="my-2">
+          <div class="text-muted" style="font-size:0.75rem">
+            <i class="bi bi-info-circle me-1"></i>
+            Nach jeder BSI-Einreichung bitte die <strong>BSI-Referenznummer</strong> im Entwurf eintragen und als „eingereicht" markieren.
+          </div>
+          <div class="mt-3 d-grid gap-2">
+            <a href="https://muk.bsi.bund.de" target="_blank" rel="noopener"
+               class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-box-arrow-up-right me-1"></i> BSI MUK-Portal öffnen
+            </a>
+            <a href="mailto:meldestelle@bsi.bund.de"
+               class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-envelope me-1"></i> meldestelle@bsi.bund.de
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Timeline Modal -->
+<div class="modal fade" id="addTimelineModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('nis2.incident_timeline_add', incident_id=incident.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header"><h5 class="modal-title">Zeitleisten-Eintrag</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="text" name="action" class="form-control mb-2" placeholder="Aktion / Schritt" required>
+          <textarea name="details" class="form-control" rows="2" placeholder="Details (optional)"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+function generateDraft(btn) {
+  const stage = btn.dataset.stage;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  fetch('{{ url_for("nis2.incident_generate_draft", incident_id=incident.id) }}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({stage: stage})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.draft_id) {
+      window.location.href = '{{ url_for("nis2.incident_detail", incident_id=incident.id) }}';
+    } else {
+      alert('Fehler: ' + (d.error || 'Unbekannter Fehler'));
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-magic"></i> KI-Entwurf';
+    }
+  })
+  .catch(() => {
+    alert('Netzwerkfehler — bitte erneut versuchen.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-magic"></i> KI-Entwurf';
+  });
+}
+</script>
+{% endblock %}
+{% endblock %}

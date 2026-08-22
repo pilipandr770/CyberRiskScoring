@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}IT-Asset-Inventar — NIS2{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3" style="max-width:1200px">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('nis2.dashboard') }}">NIS2</a></li>
+      <li class="breadcrumb-item active">IT-Asset-Inventar</li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h1 class="h3 mb-0">IT-Asset-Inventar</h1>
+      <div class="text-muted small">§30 Nr. 5 Schwachstellenmanagement · §30 Nr. 9 Zugriffskontrolle</div>
+    </div>
+    <a href="{{ url_for('nis2.asset_create') }}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i> Asset hinzufügen
+    </a>
+  </div>
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="display-6 fw-bold text-primary">{{ stats.total }}</div>
+        <div class="text-muted small">Gesamt</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="display-6 fw-bold text-danger">{{ stats.by_criticality.critical }}</div>
+        <div class="text-muted small">Kritisch</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="display-6 fw-bold text-warning">{{ stats.internet_facing }}</div>
+        <div class="text-muted small">Internet-facing</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="display-6 fw-bold text-info">{{ stats.personal_data }}</div>
+        <div class="text-muted small">Pers. Daten (DSGVO)</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="display-6 fw-bold {{ 'text-danger' if stats.patch_overdue > 0 else 'text-success' }}">
+          {{ stats.patch_overdue }}
+        </div>
+        <div class="text-muted small">Patch überfällig</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-2">
+      <div class="card border-0 shadow-sm text-center p-3">
+        <div class="display-6 fw-bold {{ 'text-warning' if stats.outdated > 0 else 'text-success' }}">
+          {{ stats.outdated }}
+        </div>
+        <div class="text-muted small">Veraltet</div>
+      </div>
+    </div>
+  </div>
+
+  {% if stats.needs_attention > 0 %}
+  <div class="alert alert-warning mb-4">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <strong>{{ stats.needs_attention }} Asset(s) benötigen Aufmerksamkeit:</strong>
+    {{ stats.patch_overdue }} Patch-Frist überschritten, {{ stats.outdated }} als veraltet markiert.
+  </div>
+  {% endif %}
+
+  <!-- Asset table -->
+  {% if assets %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-transparent fw-semibold">
+      <div class="row align-items-center">
+        <div class="col">Assets ({{ assets|length }})</div>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle small">
+        <thead class="table-light">
+          <tr>
+            <th>Name</th>
+            <th>Typ</th>
+            <th>Kritikalität</th>
+            <th>Besitzer</th>
+            <th>IP / Host</th>
+            <th>Patch-Status</th>
+            <th>Flags</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asset in assets %}
+          <tr class="{{ 'table-danger' if asset.patch_overdue else '' }}">
+            <td>
+              <strong>{{ asset.name }}</strong>
+              {% if asset.description %}
+                <div class="text-muted" style="font-size:.75rem">{{ asset.description | truncate(60) }}</div>
+              {% endif %}
+            </td>
+            <td>{{ asset.category_label }}</td>
+            <td>
+              <span class="badge bg-{{ asset.criticality_color }}">{{ asset.criticality }}</span>
+            </td>
+            <td>
+              {% if asset.owner_name %}
+                {{ asset.owner_name }}
+                {% if asset.department %}<div class="text-muted" style="font-size:.72rem">{{ asset.department }}</div>{% endif %}
+              {% else %}
+                <span class="text-muted">–</span>
+              {% endif %}
+            </td>
+            <td class="font-monospace small">
+              {% if asset.hostname %}{{ asset.hostname }}<br>{% endif %}
+              {% if asset.ip_address %}<span class="text-muted">{{ asset.ip_address }}</span>{% endif %}
+              {% if not asset.hostname and not asset.ip_address %}<span class="text-muted">–</span>{% endif %}
+            </td>
+            <td>
+              {% if asset.patch_overdue %}
+                <span class="badge bg-danger">
+                  <i class="bi bi-exclamation-triangle me-1"></i>Überfällig
+                </span>
+                <div class="text-muted" style="font-size:.72rem">
+                  seit {{ asset.next_patch_due.strftime('%d.%m.%Y') }}
+                </div>
+              {% elif asset.patch_status == 'current' %}
+                <span class="badge bg-success">Aktuell</span>
+                {% if asset.last_patched_at %}
+                  <div class="text-muted" style="font-size:.72rem">{{ asset.last_patched_at.strftime('%d.%m.%Y') }}</div>
+                {% endif %}
+              {% elif asset.patch_status == 'outdated' %}
+                <span class="badge bg-warning text-dark">Veraltet</span>
+              {% else %}
+                <span class="badge bg-secondary">Unbekannt</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if asset.is_internet_facing %}
+                <span class="badge bg-warning text-dark me-1" title="Internet-facing">
+                  <i class="bi bi-globe2"></i>
+                </span>
+              {% endif %}
+              {% if asset.stores_personal_data %}
+                <span class="badge bg-info text-dark" title="Speichert personenbezogene Daten (DSGVO Art. 30)">
+                  <i class="bi bi-person-lock"></i>
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                <form method="POST"
+                      action="{{ url_for('nis2.asset_mark_patched', asset_id=asset.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-outline-success" title="Als gepatcht markieren">
+                    <i class="bi bi-patch-check"></i>
+                  </button>
+                </form>
+                <a href="{{ url_for('nis2.asset_edit', asset_id=asset.id) }}"
+                   class="btn btn-sm btn-outline-secondary" title="Bearbeiten">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form method="POST"
+                      action="{{ url_for('nis2.asset_delete', asset_id=asset.id) }}"
+                      onsubmit="return confirm('Asset archivieren?')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-outline-danger" title="Archivieren">
+                    <i class="bi bi-archive"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-hdd-stack display-4 d-block mb-3 opacity-25"></i>
+      <h5>Noch keine Assets erfasst</h5>
+      <p class="text-muted">
+        Ein IT-Asset-Inventar ist Grundlage für §30 Nr. 5 (Schwachstellenmanagement)
+        und §30 Nr. 9 (Zugriffskontrolle / Asset-Management) nach BSIG.
+      </p>
+      <a href="{{ url_for('nis2.asset_create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Erstes Asset anlegen
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Legend -->
+  <div class="mt-3 d-flex gap-3 flex-wrap small text-muted">
+    <span><i class="bi bi-globe2 text-warning"></i> Internet-facing</span>
+    <span><i class="bi bi-person-lock text-info"></i> Speichert pers. Daten (DSGVO Art. 30)</span>
+    <span class="badge bg-danger">Kritisch</span>
+    <span class="badge bg-warning text-dark">Hoch</span>
+    <span class="badge bg-info text-dark">Mittel</span>
+    <span class="badge bg-secondary">Niedrig</span>
+  </div>
+</div>
+{% endblock %}

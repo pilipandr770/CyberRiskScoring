@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Neue Prüfung{% endblock %}
+{% block content %}
+<h1>Neue Kundenprüfung</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post" action="/intake/new" class="card">
+
+  <fieldset>
+    <legend>Unternehmensdaten</legend>
+    <label>Firmenname *</label>
+    <input type="text" name="company_name" required>
+
+    <label>HRB-Nummer</label>
+    <input type="text" name="hrb_number">
+
+    <label>Kontakt-E-Mail des Kunden (für Zugang zu Modul 3 nach Vertragsabschluss)</label>
+    <input type="email" name="contact_email">
+
+    <label>Domain / Website *</label>
+    <input type="text" name="domain" placeholder="beispiel-firma.de" required>
+
+    <label>Branche *</label>
+    <select name="industry" required>
+      {% for value, label in industries %}
+      <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Mitarbeiterzahl</label>
+    <select name="employee_band">
+      <option value="1-9">1–9</option>
+      <option value="10-49">10–49</option>
+      <option value="50-249">50–249</option>
+      <option value="250+">250+</option>
+    </select>
+
+    <label>Jahresumsatz (EUR, optional — für Bußgeld-Berechnung)</label>
+    <input type="text" name="annual_turnover_eur" placeholder="z.B. 2500000">
+  </fieldset>
+
+  <fieldset>
+    <legend>Infrastruktur (Tier 1 — für eine vollständige Prüfung empfohlen)</legend>
+    <label>Öffentliche IP-Adresse / Bereich des Büronetzwerks</label>
+    <input type="text" name="office_ip" placeholder="z.B. 203.0.113.10">
+    <p class="hint">Ohne diese Angabe wird nur die Domain geprüft (Tier 0) — das erfasst nicht die tatsächliche Büro-/Filialinfrastruktur (Kameras, Kassensysteme, VPN-Zugänge).</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Selbstauskunft</legend>
+    <label>Gab es bereits einen Sicherheitsvorfall?</label>
+    <select name="prior_incident">
+      <option value="no">Nein</option>
+      <option value="yes">Ja</option>
+    </select>
+    <input type="text" name="prior_incident_notes" placeholder="Kurze Notiz (optional)">
+
+    <label>Multi-Faktor-Authentifizierung (MFA) im Einsatz?</label>
+    <select name="has_mfa">
+      <option value="unknown">Unbekannt</option>
+      <option value="yes">Ja</option>
+      <option value="no">Nein</option>
+    </select>
+
+    <label>Backups regelmäßig getestet?</label>
+    <select name="has_tested_backups">
+      <option value="unknown">Unbekannt</option>
+      <option value="yes">Ja</option>
+      <option value="no">Nein</option>
+    </select>
+
+    <label>Besteht bereits eine Cyber-Versicherung?</label>
+    <select name="existing_cyber_insurance">
+      <option value="no">Nein</option>
+      <option value="yes">Ja</option>
+    </select>
+  </fieldset>
+
+  <fieldset>
+    <legend>Einwilligung</legend>
+    <label class="checkbox">
+      <input type="checkbox" name="consent_confirmed" value="yes">
+      Der Kunde hat der technischen Prüfung schriftlich zugestimmt.
+    </label>
+  </fieldset>
+
+  <button type="submit">Scoring starten</button>
+</form>
+{% endblock %}

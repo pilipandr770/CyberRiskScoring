@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+.venv/
+env/
+.env
+
+# Flask / SQLite
+*.db
+*.sqlite3
+instance/
+
+# Migrations (keep versions, ignore __pycache__)
+migrations/__pycache__/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Secrets (never commit!)
+.env
+.env.local
+secrets.json

@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block title %}Datenschutzerklärung — NIS2 Compliance Platform{% endblock %}
+{% block page_title %}Datenschutzerklärung{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card p-4">
+      <h1 class="h3 mb-1">Datenschutzerklärung</h1>
+      <p class="text-muted small mb-4">Stand: Mai 2025 · Zuletzt aktualisiert: 13.05.2025</p>
+
+      <h5>1. Verantwortlicher (Art. 13 Abs. 1 lit. a DSGVO)</h5>
+      <p>
+        Andrii Pylypchuk<br>
+        Bergmannweg 16, 65934 Frankfurt am Main<br>
+        E-Mail: <a href="mailto:info@andrii-it.de">info@andrii-it.de</a><br>
+        Telefon: +49 160 95030120
+      </p>
+
+      <h5 class="mt-4">2. Erhobene Daten und Verarbeitungszwecke</h5>
+
+      <h6 class="mt-3">2.1 Registrierung und Konto</h6>
+      <p>
+        Bei der Registrierung erheben wir: E-Mail-Adresse, Vor- und Nachname, Unternehmensname,
+        Telefonnummer, gehashtes Passwort.<br>
+        <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung).<br>
+        <strong>Speicherdauer:</strong> Bis zur Löschung des Kontos bzw. 3 Jahre nach letzter Nutzung.
+      </p>
+
+      <h6 class="mt-3">2.2 Nutzungsdaten der Plattform</h6>
+      <p>
+        Wir speichern die von Ihnen eingegebenen Compliance-Daten (Risiken, Vorfälle, ISMS-Dokumente,
+        Lieferanten etc.) zur Erbringung der vertraglich vereinbarten Leistung.<br>
+        <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO.
+      </p>
+
+      <h6 class="mt-3">2.3 Zugang und Vertragsdaten</h6>
+      <p>
+        Der Zugang zu dieser Plattform wird durch Ihren Cyber-Versicherer im Rahmen des
+        bestehenden Versicherungsvertrags eingerichtet. Es findet keine eigenständige
+        Zahlungsabwicklung über diese Plattform statt.<br>
+        <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO.
+      </p>
+
+      <h6 class="mt-3">2.4 KI-gestützte Funktionen (Mistral AI – EU)</h6>
+      <p>
+        Für KI-gestützte Features (ISMS-Dokumentgenerierung, BSI-Meldeentwürfe,
+        Website-Sicherheitsanalyse) werden von Ihnen eingegebene Daten an die Mistral&nbsp;AI API
+        (Mistral&nbsp;AI SAS, Paris, Frankreich) übermittelt. Die Verarbeitung erfolgt
+        <strong>ausschließlich auf Servern innerhalb der Europäischen Union</strong>; eine
+        Übermittlung in Drittländer findet für diese Funktionen nicht statt. Die Übertragung
+        erfolgt verschlüsselt (TLS). Mistral verarbeitet die Daten gemäß seiner
+        Datenschutzrichtlinie und nutzt über die API übermittelte Kundendaten nicht zum Training
+        seiner Modelle.<br>
+        <a href="https://mistral.ai/terms/#privacy-policy" target="_blank" rel="noopener">mistral.ai/terms</a><br>
+        <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO.
+      </p>
+
+      <h6 class="mt-3">2.5 Hosting und Infrastruktur (Render.com)</h6>
+      <p>
+        Die Plattform wird bei Render (Render Inc., San Francisco, CA, USA) gehostet. Die Server
+        und die Datenbank befinden sich in der <strong>Region Frankfurt (EU)</strong>; die
+        Datenverarbeitung erfolgt somit innerhalb der Europäischen Union. Da der Anbieter seinen
+        Sitz in den USA hat, ist ein Zugriff aus einem Drittland nicht vollständig auszuschließen;
+        dieser ist durch Standardvertragsklauseln abgesichert.<br>
+        <a href="https://render.com/privacy" target="_blank" rel="noopener">render.com/privacy</a><br>
+        <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO; Art. 46 DSGVO (SCC).
+      </p>
+
+      <h6 class="mt-3">2.6 Server-Logs</h6>
+      <p>
+        Beim Zugriff auf die Plattform werden automatisch Logdaten erhoben (IP-Adresse,
+        Zeitstempel, aufgerufene URL, HTTP-Status, Browser-Typ).<br>
+        <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse
+        an Sicherheit und Fehlerdiagnose).<br>
+        <strong>Speicherdauer:</strong> 30 Tage.
+      </p>
+
+      <h5 class="mt-4">3. Cookies</h5>
+      <p>
+        Wir verwenden ausschließlich technisch notwendige Cookies:
+      </p>
+      <table class="table table-sm table-bordered small">
+        <thead class="table-light">
+          <tr><th>Cookie</th><th>Zweck</th><th>Laufzeit</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>session</code></td>
+            <td>Flask-Session (Anmeldestatus, CSRF-Schutz)</td>
+            <td>Sitzung / 30 Tage (bei „Angemeldet bleiben")</td>
+          </tr>
+          <tr>
+            <td><code>cookie_consent</code> (localStorage)</td>
+            <td>Speicherung Ihrer Cookie-Einwilligung</td>
+            <td>1 Jahr</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="small text-muted">
+        Wir setzen keine Tracking-Cookies, keine Social-Media-Plugins und kein Google Analytics ein.
+      </p>
+
+      <h5 class="mt-4">4. Weitergabe an Dritte</h5>
+      <p>
+        Ihre Daten werden nicht an Dritte zu Werbezwecken weitergegeben. Eine Weitergabe erfolgt nur:
+      </p>
+      <ul class="small">
+        <li>An die oben genannten Auftragsverarbeiter (Render, Mistral AI) zur Leistungserbringung</li>
+        <li>Bei gesetzlicher Pflicht (z. B. Behördenanfragen)</li>
+      </ul>
+
+      <h5 class="mt-4">5. Ihre Rechte (Art. 15–22 DSGVO)</h5>
+      <p>Sie haben folgende Rechte gegenüber uns:</p>
+      <ul>
+        <li><strong>Auskunft</strong> (Art. 15): Welche Daten wir über Sie gespeichert haben</li>
+        <li><strong>Berichtigung</strong> (Art. 16): Unrichtige Daten korrigieren lassen</li>
+        <li><strong>Löschung</strong> (Art. 17): Löschung Ihrer Daten — direkt über
+          <a href="{{ url_for('legal.delete_account') }}">Konto löschen</a></li>
+        <li><strong>Einschränkung</strong> (Art. 18): Einschränkung der Verarbeitung</li>
+        <li><strong>Datenübertragbarkeit</strong> (Art. 20): Ihre Daten in maschinenlesbarem Format</li>
+        <li><strong>Widerspruch</strong> (Art. 21): Widerspruch gegen berechtigte Interessen</li>
+      </ul>
+      <p>
+        Anfragen richten Sie bitte an:
+        <a href="mailto:info@andrii-it.de">info@andrii-it.de</a>
+      </p>
+
+      <h5 class="mt-4">6. Beschwerderecht</h5>
+      <p>
+        Sie haben das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren.
+        Zuständig für Frankfurt am Main ist der Hessische Beauftragte für Datenschutz und
+        Informationsfreiheit (HBDI):<br>
+        <a href="https://datenschutz.hessen.de" target="_blank" rel="noopener">datenschutz.hessen.de</a>
+      </p>
+
+      <h5 class="mt-4">7. Datensicherheit</h5>
+      <p class="small text-muted">
+        Die Plattform nutzt TLS-Verschlüsselung (HTTPS), Passwort-Hashing (Werkzeug/bcrypt),
+        CSRF-Schutz und optionale Zwei-Faktor-Authentifizierung (TOTP).
+        Datenbanken sind nicht öffentlich zugänglich.
+      </p>
+
+      <div class="mt-4 d-flex gap-3 small">
+        <a href="{{ url_for('legal.impressum') }}">Impressum</a>
+        <a href="{{ url_for('legal.agb') }}">AGB</a>
+        <a href="{{ url_for('legal.delete_account') }}">Konto löschen</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

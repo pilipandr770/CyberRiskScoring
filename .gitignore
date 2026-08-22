@@ -1,0 +1,25 @@
+# Secrets — never commit real values, only the .example templates
+.env
+.env.*
+!.env.example
+!.env.nis2store.example
+!**/.env.example
+
+# Study/reference material — not part of the shippable project.
+# reference/BB_Assist is its own separate git repo (nested .git); the useful
+# parts of reference/nis2-store were already adopted into services/nis2-store.
+reference/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+*.sqlite3
+
+# Session-local tooling artifacts (scheduled-task locks etc.)
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db

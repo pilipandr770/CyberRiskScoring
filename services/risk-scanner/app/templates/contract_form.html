@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Versicherungsantrag{% endblock %}
+{% block content %}
+<h1>Versicherungsantrag — {{ scan.assessment.company_name }}</h1>
+<p class="hint">Vorschlagswerte, automatisch aus der Risikoeinschätzung berechnet. Vor dem Drucken/Erzeugen anpassen — Basis: AVB Cyber (GDV-Musterbedingungen, Stand Februar 2024).</p>
+
+<form method="post" action="/report/{{ scan.id }}/contract/pdf" class="card">
+
+  <fieldset>
+    <legend>Vertragsparteien</legend>
+    <label>Versicherer</label>
+    <input type="text" name="insurer_name" value="[VERSICHERER EINTRAGEN]">
+    <label>Versicherungsnehmer</label>
+    <input type="text" value="{{ scan.assessment.company_name }}" disabled>
+    <label>Versicherungsbeginn</label>
+    <input type="text" name="policy_start" placeholder="TT.MM.JJJJ">
+    <label>Laufzeit (Jahre)</label>
+    <input type="text" name="policy_term_years" value="{{ fields.policy_term_years }}">
+  </fieldset>
+
+  <fieldset>
+    <legend>Versicherungssummen nach Baustein (EUR)</legend>
+    <label>A2 — Service-/Kosten-Baustein (Forensik, Krisenmanagement)</label>
+    <input type="text" name="sum_a2" value="{{ fields.sums.a2_forensik_kosten|int }}">
+    <label>A3 — Drittschaden-Baustein (Haftpflicht)</label>
+    <input type="text" name="sum_a3" value="{{ fields.sums.a3_drittschaden|int }}">
+    <label>A4-1 — Betriebsunterbrechung</label>
+    <input type="text" name="sum_a4_1" value="{{ fields.sums.a4_1_betriebsunterbrechung|int }}">
+    <label>Haftzeit (Monate) / Wartezeit (Stunden)</label>
+    <input type="text" name="haftzeit_bu_months" value="{{ fields.haftzeit_bu_months }}">
+    <input type="text" name="wartezeit_bu_hours" value="{{ fields.wartezeit_bu_hours }}">
+    <label>A4-2 — Wiederherstellung von Daten</label>
+    <input type="text" name="sum_a4_2" value="{{ fields.sums.a4_2_datenwiederherstellung|int }}">
+    <label>Cyber-Erpressung / Lösegeld</label>
+    <input type="text" name="sum_extortion" value="{{ fields.sums.cyber_erpressung|int }}">
+    <label>Gesamtversicherungssumme</label>
+    <input type="text" name="total_sum" value="{{ fields.total_sum_insured_eur|int }}">
+  </fieldset>
+
+  <fieldset>
+    <legend>Beitrag</legend>
+    <label>Jahresprämie (Vorschlag)</label>
+    <input type="text" name="premium_annual_eur" value="{{ fields.premium_annual_eur|int }}">
+    <label>Zahlungsweise</label>
+    <select name="payment_frequency">
+      <option value="jährlich">jährlich</option>
+      <option value="halbjährlich">halbjährlich</option>
+      <option value="monatlich">monatlich</option>
+    </select>
+    <label>Selbstbeteiligung je Versicherungsfall</label>
+    <input type="text" name="deductible_eur" value="{{ fields.deductible_eur|int }}">
+  </fieldset>
+
+  <fieldset>
+    <legend>Obliegenheiten-Check (AVB Cyber, Abschnitt A1-16)</legend>
+    <table class="list">
+      <thead><tr><th>Klausel</th><th>Status</th><th>Detail</th></tr></thead>
+      <tbody>
+        {% for item in obliegenheiten %}
+        <tr>
+          <td>{{ item.clause }}</td>
+          <td><strong>{{ item.status }}</strong></td>
+          <td>{{ item.detail }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </fieldset>
+
+  <button type="submit">Versicherungsantrag als PDF erzeugen</button>
+</form>
+{% endblock %}

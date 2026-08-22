@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}NIS2 Compliance Platform{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.svg') }}">
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --nis2-primary:   #1a3a5c;
+      --nis2-accent:    #0d6efd;
+      --nis2-success:   #198754;
+      --nis2-danger:    #dc3545;
+      --nis2-warning:   #ffc107;
+      --sidebar-width:  260px;
+    }
+    body { font-family: 'Inter', sans-serif; background: #f4f6fb; color: #212529; }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-width);
+      min-height: 100vh;
+      background: var(--nis2-primary);
+      color: #fff;
+      position: fixed;
+      top: 0; left: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+    }
+    .sidebar-brand {
+      padding: 1.5rem 1.25rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      text-decoration: none;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .sidebar-brand .brand-icon { font-size: 1.6rem; color: #60c0f0; }
+    .sidebar-brand .brand-text { font-size: 1rem; font-weight: 700; line-height: 1.2; }
+    .sidebar-brand .brand-sub  { font-size: .7rem; opacity: .65; font-weight: 400; }
+
+    .sidebar-nav { flex: 1; padding: 1rem 0; }
+    .sidebar-nav .nav-section {
+      font-size: .65rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.45);
+      padding: 1.2rem 1.25rem .35rem;
+    }
+    .sidebar-nav .nav-link {
+      color: rgba(255,255,255,.75);
+      padding: .55rem 1.25rem;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      font-size: .9rem;
+      transition: background .15s, color .15s;
+    }
+    .sidebar-nav .nav-link:hover,
+    .sidebar-nav .nav-link.active {
+      background: rgba(255,255,255,.1);
+      color: #fff;
+    }
+    .sidebar-nav .nav-link .bi { font-size: 1rem; width: 1.2rem; text-align: center; }
+    .sidebar-nav .badge-pill {
+      margin-left: auto;
+      font-size: .65rem;
+      padding: .2em .55em;
+    }
+
+    .sidebar-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid rgba(255,255,255,.12);
+      font-size: .8rem;
+      color: rgba(255,255,255,.6);
+    }
+
+    /* ── Main content ─────────────────────────────────── */
+    .main-wrapper {
+      margin-left: var(--sidebar-width);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: .75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 900;
+    }
+    .topbar .page-title { font-size: 1.1rem; font-weight: 600; margin: 0; }
+    .content { padding: 1.75rem 1.5rem; flex: 1; }
+
+    /* ── Cards ─────────────────────────────────────────── */
+    .card { border: none; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+    .card-header { background: transparent; border-bottom: 1px solid #f0f0f0; font-weight: 600; }
+
+    /* ── Compliance score ring ────────────────────────── */
+    .score-ring {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; font-weight: 700;
+    }
+    .score-ring.good    { background: #d1fae5; color: #065f46; }
+    .score-ring.partial { background: #fef3c7; color: #92400e; }
+    .score-ring.poor    { background: #fee2e2; color: #991b1b; }
+
+    /* ── Trial banner ─────────────────────────────────── */
+    .trial-banner {
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      border-left: 4px solid #f59e0b;
+      padding: .65rem 1rem;
+      font-size: .85rem;
+    }
+
+    /* ── Mobile ───────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); transition: transform .25s; }
+      .sidebar.open { transform: translateX(0); }
+      .main-wrapper { margin-left: 0; }
+    }
+
+    /* ── Help FAB ─────────────────────────────────────── */
+    #helpFab {
+      position: fixed; bottom: 90px; right: 24px; z-index: 1050;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--nis2-accent); color: #fff; border: none;
+      box-shadow: 0 4px 14px rgba(13,110,253,.45);
+      font-size: 1.3rem; display: flex; align-items: center; justify-content: center;
+      transition: transform .15s, box-shadow .15s;
+      cursor: pointer;
+    }
+    #helpFab:hover { transform: scale(1.12); box-shadow: 0 6px 18px rgba(13,110,253,.55); }
+    @keyframes helpPulse {
+      0%,100% { box-shadow: 0 4px 14px rgba(13,110,253,.45); }
+      50%      { box-shadow: 0 0 0 10px rgba(13,110,253,.15), 0 4px 14px rgba(13,110,253,.45); }
+    }
+    #helpFab.help-fab-pulse { animation: helpPulse 1.2s ease-in-out 3; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+{% if current_user.is_authenticated %}
+<!-- ═══════════════════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <a class="sidebar-brand" href="{{ url_for('nis2.dashboard') }}">
+    <i class="bi bi-shield-lock-fill brand-icon"></i>
+    <div>
+      <div class="brand-text">NIS2</div>
+      <div class="brand-sub">Compliance Platform</div>
+    </div>
+  </a>
+
+  <div class="sidebar-nav">
+    <div class="nav-section">Übersicht</div>
+    <a class="nav-link {% if request.endpoint == 'nis2.dashboard' %}active{% endif %}"
+       href="{{ url_for('nis2.dashboard') }}">
+      <i class="bi bi-speedometer2"></i> Dashboard
+    </a>
+
+    <div class="nav-section">Compliance</div>
+    <a class="nav-link {% if 'bsi_registration' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.bsi_registration_landing') }}">
+      <i class="bi bi-building-check"></i> BSI-Registrierung
+    </a>
+    <a class="nav-link {% if 'isms' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.isms_overview') }}">
+      <i class="bi bi-file-earmark-text"></i> ISMS-Dokumente
+    </a>
+    <a class="nav-link {% if 'risk' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.risk_list') }}">
+      <i class="bi bi-shield-exclamation"></i> Risikoregister
+    </a>
+    <a class="nav-link {% if 'incident' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.incidents_list') }}">
+      <i class="bi bi-exclamation-triangle"></i> Incident Response
+    </a>
+    <a class="nav-link {% if 'supply_chain' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.supply_chain_dashboard') }}">
+      <i class="bi bi-diagram-3"></i> Lieferkette
+    </a>
+    <a class="nav-link {% if 'dsgvo' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.dsgvo_list') }}">
+      <i class="bi bi-person-lock"></i> DSGVO Art. 30
+    </a>
+
+    <div class="nav-section">Sicherheit</div>
+    <a class="nav-link {% if 'training' in (request.endpoint or '') and 'training_ack' not in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.training_list') }}">
+      <i class="bi bi-mortarboard"></i> Schulungen
+    </a>
+    <a class="nav-link {% if 'monitoring' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.monitoring_dashboard') }}">
+      <i class="bi bi-radar"></i> Monitoring
+    </a>
+    <a class="nav-link {% if 'audit' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.site_audit_index') }}">
+      <i class="bi bi-bug"></i> Site-Audit
+    </a>
+    <a class="nav-link {% if 'asset' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.asset_list') }}">
+      <i class="bi bi-hdd-stack"></i> IT-Assets
+    </a>
+
+    <div class="nav-section">Berichte</div>
+    <a class="nav-link {% if 'fristen' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.fristen') }}">
+      <i class="bi bi-calendar2-event"></i> Fristenkalender
+    </a>
+    <a class="nav-link {% if 'compliance_report' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('nis2.compliance_report') }}">
+      <i class="bi bi-clipboard2-check"></i> §39 Compliance-Bericht
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <i class="bi bi-person-circle fs-5"></i>
+      <div>
+        <div class="fw-600 text-white" style="font-size:.8rem;">{{ current_user.display_name }}</div>
+        <div style="font-size:.7rem;">{{ current_user.plan_label }}</div>
+      </div>
+    </div>
+    <div class="d-flex gap-3">
+      <a href="{{ url_for('auth.profile') }}" class="text-white-50" style="font-size:.75rem;">
+        <i class="bi bi-gear"></i> Profil
+      </a>
+      <a href="{{ url_for('auth.logout') }}" class="text-white-50" style="font-size:.75rem;">
+        <i class="bi bi-box-arrow-right"></i> Abmelden
+      </a>
+    </div>
+    <div class="d-flex gap-2 mt-2" style="font-size:.68rem;">
+      <a href="{{ url_for('legal.impressum') }}" class="text-white-50">Impressum</a>
+      <a href="{{ url_for('legal.agb') }}" class="text-white-50">AGB</a>
+      <a href="{{ url_for('legal.datenschutz') }}" class="text-white-50">Datenschutz</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════
+     MAIN WRAPPER
+═══════════════════════════════════════════════════════ -->
+<div class="main-wrapper">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-sm btn-outline-secondary d-md-none" id="sidebarToggle">
+        <i class="bi bi-list"></i>
+      </button>
+      <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% if current_user.subscription_plan == 'trial' %}
+        <span class="badge bg-warning text-dark d-none d-md-inline">
+          <i class="bi bi-clock"></i> Testphase
+        </span>
+        <a href="{{ url_for('payments.pricing') }}" class="btn btn-sm btn-primary">
+          Jetzt upgraden
+        </a>
+      {% endif %}
+      {% if current_user.is_admin %}
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-danger" title="Admin">
+          <i class="bi bi-shield-lock"></i>
+        </a>
+      {% endif %}
+      <!-- User dropdown -->
+      <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-1"
+                type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-person-circle"></i>
+          <span class="d-none d-md-inline">{{ current_user.display_name }}</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><h6 class="dropdown-header">{{ current_user.email }}</h6></li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <a class="dropdown-item" href="{{ url_for('auth.profile') }}">
+              <i class="bi bi-gear me-2"></i>Mein Profil
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item" href="{{ url_for('payments.pricing') }}">
+              <i class="bi bi-credit-card me-2"></i>Abonnement
+            </a>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+              <i class="bi bi-box-arrow-right me-2"></i>Abmelden
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trial banner -->
+  {% if current_user.subscription_plan == 'trial' and current_user.trial_ends_at %}
+  <div class="trial-banner px-4">
+    <i class="bi bi-info-circle me-1"></i>
+    Ihr kostenloser Testzeitraum endet am
+    <strong>{{ current_user.trial_ends_at.strftime('%d.%m.%Y') }}</strong>.
+    <a href="{{ url_for('payments.pricing') }}" class="ms-2 fw-600">Jetzt upgraden →</a>
+  </div>
+  {% endif %}
+
+  <!-- Flash messages -->
+  <div class="px-4 pt-3">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <!-- Content -->
+  <main class="content" data-page="{{ request.endpoint }}">
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+{% else %}
+<!-- ── Unauthenticated layout (simple topbar only) ── -->
+<nav class="navbar navbar-expand-lg navbar-dark" style="background:var(--nis2-primary);">
+  <div class="container">
+    <a class="navbar-brand fw-700" href="{{ url_for('index') }}">
+      <i class="bi bi-shield-lock-fill me-2 text-info"></i>NIS2 Compliance
+    </a>
+    <div class="ms-auto d-flex gap-2">
+      <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-sm">Anmelden</a>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Kostenlos testen</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container py-4">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+  {{ self.content() }}
+</div>
+<footer class="border-top py-3 mt-2" style="background:#fff;">
+  <div class="container d-flex flex-wrap gap-3 justify-content-center" style="font-size:.8rem;color:#6c757d;">
+    <a href="{{ url_for('legal.impressum') }}" class="text-muted">Impressum</a>
+    <a href="{{ url_for('legal.agb') }}" class="text-muted">AGB</a>
+    <a href="{{ url_for('legal.datenschutz') }}" class="text-muted">Datenschutz</a>
+    <span>© 2025 Andrii Pylypchuk</span>
+  </div>
+</footer>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Mobile sidebar toggle
+  const toggle = document.getElementById('sidebarToggle');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      document.querySelector('.sidebar').classList.toggle('open');
+    });
+  }
+</script>
+{% block extra_js %}{% endblock %}
+
+<!-- ── Cookie Banner ───────────────────────────────────────────────── -->
+<div id="cookieBanner" style="
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;
+  background:#1a3a5c;color:#fff;padding:1rem 1.5rem;
+  box-shadow:0 -2px 12px rgba(0,0,0,.25);
+">
+  <div class="d-flex flex-wrap align-items-center gap-3">
+    <div style="flex:1;min-width:200px;font-size:.85rem;">
+      <i class="bi bi-cookie me-1"></i>
+      Wir verwenden technisch notwendige Cookies für den Betrieb dieser Plattform
+      (Session, CSRF-Schutz). Keine Tracking-Cookies.
+      <a href="/legal/datenschutz" class="text-info ms-1">Datenschutz</a>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-light" onclick="cookieChoice('decline')">Ablehnen</button>
+      <button class="btn btn-sm btn-primary" onclick="cookieChoice('accept')">Akzeptieren</button>
+    </div>
+  </div>
+</div>
+<script>
+  (function() {
+    if (!localStorage.getItem('cookie_consent')) {
+      document.getElementById('cookieBanner').style.display = 'block';
+    }
+  })();
+  function cookieChoice(choice) {
+    localStorage.setItem('cookie_consent', choice);
+    document.getElementById('cookieBanner').style.display = 'none';
+  }
+</script>
+{% if current_user.is_authenticated %}
+<!-- ── Help Offcanvas ─────────────────────────────────────────────── -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="helpOffcanvas" style="width:390px;max-width:95vw;">
+  <div class="offcanvas-header" style="background:var(--nis2-primary);color:#fff;">
+    <h5 class="offcanvas-title mb-0" style="font-size:1rem;">
+      <i class="bi bi-question-circle-fill me-2" style="color:#60c0f0;"></i>Hilfe &amp; Erklärungen
+    </h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Schließen"></button>
+  </div>
+  <div class="offcanvas-body p-0" id="helpOffcanvasBody" style="overflow-y:auto;">
+    <div class="p-4 text-muted text-center">
+      <i class="bi bi-hourglass-split fs-3 mb-2 d-block"></i>Wird geladen…
+    </div>
+  </div>
+</div>
+
+<!-- ── Help FAB ──────────────────────────────────────────────────── -->
+<button id="helpFab" data-bs-toggle="offcanvas" data-bs-target="#helpOffcanvas"
+  aria-label="Hilfe anzeigen" title="Hilfe anzeigen">
+  <i class="bi bi-question-lg"></i>
+</button>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/help.js') }}"></script>
+</body>
+</html>

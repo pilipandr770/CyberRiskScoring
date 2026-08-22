@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}{{ 'VVT-Eintrag bearbeiten' if activity else 'Verarbeitungstätigkeit erfassen' }} — NIS2{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:900px">
+
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('nis2.dsgvo_list') }}">VVT</a></li>
+      <li class="breadcrumb-item active">{{ 'Bearbeiten' if activity else 'Neu' }}</li>
+    </ol>
+  </nav>
+
+  <h1 class="h3 mb-4">
+    {{ 'Verarbeitungstätigkeit bearbeiten' if activity else 'Neue Verarbeitungstätigkeit erfassen' }}
+  </h1>
+
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row g-4">
+
+      {# Core #}
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header fw-semibold"><i class="bi bi-file-earmark-text me-1"></i> Grundangaben (Art. 30 Abs. 1)</div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label class="form-label">Bezeichnung der Tätigkeit <span class="text-danger">*</span></label>
+                <input type="text" name="name" class="form-control" required
+                       value="{{ activity.name if activity else '' }}"
+                       placeholder="z.B. Mitarbeiterverwaltung, Kundenkommunikation, Webanalyse">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Rechtsgrundlage</label>
+                <select name="legal_basis" class="form-select">
+                  <option value="">— wählen —</option>
+                  {% for val, lbl in legal_bases %}
+                    <option value="{{ val }}"
+                      {{ 'selected' if activity and activity.legal_basis == val else '' }}>
+                      {{ lbl }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Zweck der Verarbeitung <span class="text-danger">*</span></label>
+                <textarea name="purpose" class="form-control" rows="2" required
+                          placeholder="Wofür werden die Daten verarbeitet?">{{ activity.purpose if activity else '' }}</textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Ergänzende Anmerkungen zur Rechtsgrundlage</label>
+                <input type="text" name="legal_basis_notes" class="form-control"
+                       value="{{ activity.legal_basis_notes or '' }}"
+                       placeholder="z.B. berechtigtes Interesse gemäß Erwägungsgrund 47">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Data categories & subjects #}
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold"><i class="bi bi-tag me-1"></i> Datenkategorien</div>
+          <div class="card-body">
+            {% set selected_cats = activity.get_data_categories() if activity else [] %}
+            {% for cat in data_categories %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="data_categories"
+                     value="{{ cat }}" id="cat_{{ loop.index }}"
+                     {{ 'checked' if cat in selected_cats else '' }}>
+              <label class="form-check-label small" for="cat_{{ loop.index }}">{{ cat }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold"><i class="bi bi-people me-1"></i> Betroffene Personen</div>
+          <div class="card-body">
+            {% set selected_subj = activity.get_data_subjects() if activity else [] %}
+            {% for subj in data_subjects %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="data_subjects"
+                     value="{{ subj }}" id="subj_{{ loop.index }}"
+                     {{ 'checked' if subj in selected_subj else '' }}>
+              <label class="form-check-label small" for="subj_{{ loop.index }}">{{ subj }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      {# Recipients & retention #}
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold"><i class="bi bi-share me-1"></i> Empfänger &amp; Weitergabe</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Empfänger / Kategorien von Empfängern</label>
+              <textarea name="recipients" class="form-control" rows="2"
+                        placeholder="Wer erhält die Daten?">{{ activity.recipients or '' }}</textarea>
+            </div>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" name="third_country_transfer"
+                     id="third_country"
+                     {{ 'checked' if activity and activity.third_country_transfer else '' }}>
+              <label class="form-check-label" for="third_country">
+                <i class="bi bi-globe2 me-1 text-warning"></i> Drittlandtransfer (außerhalb EU/EWR)
+              </label>
+            </div>
+            <div id="safeguards_block" class="{{ '' if (activity and activity.third_country_transfer) else 'd-none' }}">
+              <label class="form-label small">Geeignete Garantien (z.B. SCCs, BCR)</label>
+              <input type="text" name="third_country_safeguards" class="form-control form-control-sm"
+                     value="{{ activity.third_country_safeguards or '' }}"
+                     placeholder="z.B. EU-Standardvertragsklauseln (SCC)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold"><i class="bi bi-clock-history me-1"></i> Löschfristen</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Aufbewahrungsfrist</label>
+              <input type="text" name="retention_period" class="form-control"
+                     value="{{ activity.retention_period or '' }}"
+                     placeholder="z.B. 7 Jahre (§257 HGB), 3 Jahre nach Vertragsende">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Löschprozess</label>
+              <textarea name="deletion_process" class="form-control" rows="2"
+                        placeholder="Wie und wann werden Daten gelöscht?">{{ activity.deletion_process or '' }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# TOM & processor #}
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold"><i class="bi bi-shield-lock me-1"></i> Technische Schutzmaßnahmen (TOMs)</div>
+          <div class="card-body">
+            <textarea name="technical_measures" class="form-control" rows="4"
+                      placeholder="z.B. Verschlüsselung AES-256, Zugangskontrolle IAM, TLS 1.3, Pseudonymisierung...">{{ activity.technical_measures or '' }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold"><i class="bi bi-building me-1"></i> Auftragsverarbeiter (Art. 28)</div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Auftragsverarbeiter aus Lieferkette</label>
+              <select name="processor_id" class="form-select">
+                <option value="">— kein Auftragsverarbeiter —</option>
+                {% for s in suppliers %}
+                  <option value="{{ s.id }}"
+                    {{ 'selected' if activity and activity.processor_id == s.id else '' }}>
+                    {{ s.company_name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Oder: Name des Auftragsverarbeiters (Freitext)</label>
+              <input type="text" name="processor_name" class="form-control"
+                     value="{{ activity.processor_name or '' }}"
+                     placeholder="z.B. Google LLC, AWS EMEA SARL">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Risk & review #}
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header fw-semibold"><i class="bi bi-clipboard2-data me-1"></i> Risikobewertung &amp; Überprüfung</div>
+          <div class="card-body">
+            <div class="row g-3 align-items-center">
+              <div class="col-md-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="is_high_risk"
+                         id="high_risk"
+                         {{ 'checked' if activity and activity.is_high_risk else '' }}>
+                  <label class="form-check-label" for="high_risk">
+                    <i class="bi bi-exclamation-triangle text-danger me-1"></i>
+                    Hohes Risiko (Art. 35 DSFA erforderlich)
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="dsfa_done"
+                         id="dsfa_done"
+                         {{ 'checked' if activity and activity.dsfa_done else '' }}>
+                  <label class="form-check-label" for="dsfa_done">
+                    <i class="bi bi-check-circle text-success me-1"></i>
+                    DSFA durchgeführt
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Nächste Überprüfung</label>
+                <input type="date" name="next_review_date" class="form-control"
+                       value="{{ activity.next_review_date.isoformat() if activity and activity.next_review_date else '' }}">
+              </div>
+            </div>
+            <div class="mt-3">
+              <label class="form-label">Notizen</label>
+              <textarea name="notes" class="form-control" rows="2">{{ activity.notes or '' }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>
+          {{ 'Änderungen speichern' if activity else 'Tätigkeit speichern' }}
+        </button>
+        <a href="{{ url_for('nis2.dsgvo_list') }}" class="btn btn-outline-secondary">Abbrechen</a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+document.getElementById('third_country').addEventListener('change', function() {
+  document.getElementById('safeguards_block').classList.toggle('d-none', !this.checked);
+});
+</script>
+{% endblock %}

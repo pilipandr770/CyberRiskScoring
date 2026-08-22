@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NIS2-Compliance-Portal — bereitgestellt von {{ insurer_name|default('Ihrer Cyber-Versicherung') }}</title>
+
+  <!-- SEO Meta -->
+  <meta name="description" content="NIS2-Compliance-Portal für Versicherungsnehmer: BSI-Registrierung, ISMS-Dokumente (ISO 27001), Risikoregister, Incident Response (§32 BSIG), Lieferkettensicherheit — als Teil Ihres Cyber-Versicherungsschutzes.">
+  <meta name="keywords" content="NIS2 Compliance, BSIG §30, BSI Registrierung, ISMS, NIS2 Deutschland, Cybersecurity Compliance KMU, Cyberversicherung">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="shortcut icon" href="/static/favicon.svg">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="NIS2-Compliance-Portal — bereitgestellt von {{ insurer_name|default('Ihrer Cyber-Versicherung') }}">
+  <meta property="og:description" content="BSI-Registrierung, ISMS, Risikomanagement, Incident Response, Lieferkettensicherheit — im Rahmen Ihres Cyber-Versicherungsschutzes.">
+  <meta property="og:locale" content="de_DE">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --blue: #1a3a5c; --accent: #0d6efd; }
+    body { font-family: 'Inter', sans-serif; }
+
+    /* Navbar */
+    .navbar { background: var(--blue); }
+    .navbar-brand { font-weight: 800; letter-spacing: -.02em; }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, #0f2542 0%, #1a3a5c 60%, #1d4e89 100%);
+      color: #fff;
+      padding: 6rem 0 5rem;
+    }
+    .hero .badge-law {
+      background: rgba(255,255,255,.15);
+      color: #93c5fd;
+      border: 1px solid rgba(147,197,253,.3);
+      border-radius: 999px;
+      padding: .35em 1em;
+      font-size: .8rem;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 1.25rem;
+    }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.25rem); font-weight: 800; line-height: 1.15; }
+    .hero .lead { font-size: 1.1rem; opacity: .85; max-width: 540px; }
+    .hero .stat-box {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      text-align: center;
+    }
+    .hero .stat-box .num { font-size: 2rem; font-weight: 800; color: #60c0f0; }
+    .hero .stat-box .lbl { font-size: .8rem; opacity: .75; margin-top: .1rem; }
+
+    /* Features */
+    .feature-card {
+      border: none;
+      border-radius: 14px;
+      padding: 1.75rem;
+      background: #fff;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+      height: 100%;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .feature-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 1rem;
+    }
+
+    /* Compliance steps */
+    .step-num {
+      width: 40px; height: 40px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .95rem;
+      flex-shrink: 0;
+    }
+
+    /* Pricing */
+    .price-card {
+      border-radius: 16px;
+      border: 2px solid #e9ecef;
+      padding: 2rem;
+      background: #fff;
+      transition: border-color .2s;
+    }
+    .price-card.featured {
+      border-color: var(--accent);
+      position: relative;
+    }
+    .price-card.featured::before {
+      content: 'Empfohlen';
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #fff;
+      border-radius: 999px; padding: .2em 1em; font-size: .75rem; font-weight: 700;
+    }
+    .price-card .price-num { font-size: 2.5rem; font-weight: 800; }
+    .price-card .price-period { font-size: .85rem; color: #6c757d; }
+    .price-card ul { padding-left: 0; list-style: none; }
+    .price-card ul li { padding: .35rem 0; font-size: .9rem; }
+    .price-card ul li i { color: #198754; margin-right: .4rem; }
+
+    /* CTA section */
+    .cta-section {
+      background: linear-gradient(135deg, #1a3a5c, #0d6efd);
+      color: #fff;
+      border-radius: 20px;
+      padding: 3.5rem 2rem;
+      text-align: center;
+    }
+
+    /* Law info bar */
+    .law-bar {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: .85rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      font-size: .9rem;
+    }
+
+    footer { background: var(--blue); color: rgba(255,255,255,.65); }
+    footer a { color: rgba(255,255,255,.65); text-decoration: none; }
+    footer a:hover { color: #fff; }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <i class="bi bi-shield-lock-fill me-2 text-info"></i>NIS2-Compliance-Portal
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
+        <li class="nav-item"><a class="nav-link text-white-75" href="#features">Funktionen</a></li>
+        <li class="nav-item"><a class="nav-link text-white-75" href="#how">So funktioniert's</a></li>
+        <li class="nav-item"><a class="nav-link text-white-75" href="{{ url_for('blog.index') }}">Blog</a></li>
+        <li class="nav-item ms-2">
+          <a class="btn btn-primary btn-sm fw-600" href="{{ url_for('auth.login') }}">Zum Kundenportal</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Law alert bar -->
+<div class="container mt-3">
+  <div class="law-bar">
+    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+    <strong>Wichtig:</strong> Das NIS2-Umsetzungsgesetz (NIS2UmsuCG) ist seit <strong>6. Dezember 2025</strong> in Kraft.
+    Betroffene Unternehmen müssen jetzt handeln — Bußgelder bis zu <strong>10 Mio. € oder 2 % des Jahresumsatzes</strong>.
+  </div>
+</div>
+
+<!-- Hero -->
+<section class="hero mt-3" style="border-radius: 0 0 24px 24px;">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-7">
+        <div class="badge-law"><i class="bi bi-shield-check me-1"></i>§30 BSIG · NIS2UmsuCG 2025</div>
+        <h1>NIS2-Konformität —<br>Teil Ihres Cyber-Versicherungsschutzes</h1>
+        <p class="lead mt-3">
+          {{ insurer_name|default('Ihre Cyber-Versicherung') }} stellt Ihnen dieses Portal zur Verfügung, um alle
+          10 Pflichtmaßnahmen des §30 BSIG nachweisbar umzusetzen: von der BSI-Registrierung
+          bis zum Incident-Report — auf Deutsch, BSI-konform.
+        </p>
+        <div class="d-flex flex-wrap gap-3 mt-4">
+          <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg px-4">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Zum Kundenportal
+          </a>
+          <a href="#features" class="btn btn-outline-light btn-lg px-4">
+            Funktionen ansehen
+          </a>
+        </div>
+        <div class="d-flex flex-wrap gap-4 mt-4 text-white-75" style="font-size:.85rem;">
+          <span><i class="bi bi-check-circle-fill text-success me-1"></i>Im Versicherungsschutz enthalten</span>
+          <span><i class="bi bi-check-circle-fill text-success me-1"></i>DSGVO-konform · Server in Deutschland</span>
+          <span><i class="bi bi-stars text-success me-1"></i>KI aus der EU · Mistral AI (Frankreich)</span>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="stat-box">
+              <div class="num">10</div>
+              <div class="lbl">Pflichtmaßnahmen §30 BSIG</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="stat-box">
+              <div class="num">24h</div>
+              <div class="lbl">BSI-Frühwarnung Deadline</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="stat-box">
+              <div class="num">10Mio</div>
+              <div class="lbl">Max. Bußgeld € (Besonders Wichtige)</div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="stat-box">
+              <div class="num">100%</div>
+              <div class="lbl">Abdeckung §30 Abs. 2 BSIG</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="py-6 bg-light mt-5" id="features">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="fw-800">Alles, was Sie für NIS2 brauchen</h2>
+      <p class="text-muted">8 integrierte Module decken alle §30 BSIG Anforderungen ab</p>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-building-check"></i></div>
+          <h5 class="fw-700">BSI-Registrierung</h5>
+          <p class="text-muted mb-0 small">Schritt-für-Schritt Assistent zur Registrierung im BSI MUK-Portal. Automatische Klassifizierung: Besonders wichtig / Wichtig / Nicht betroffen.</p>
+          <div class="mt-2"><small class="text-muted">§33 BSIG</small></div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon bg-info bg-opacity-10 text-info"><i class="bi bi-file-earmark-text"></i></div>
+          <h5 class="fw-700">ISMS-Dokumente</h5>
+          <p class="text-muted mb-0 small">KI-gestützte Erstellung aller 10 Pflichtdokumente: Risikoanalyse, Sicherheitsleitlinie, IRP, BCP, Supply Chain Policy und mehr — mit einem KI-Modell aus der EU (Mistral AI), Datenverarbeitung ausschließlich in Europa.</p>
+          <div class="mt-2"><small class="text-muted">§30 Nr. 1-10</small></div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-exclamation-triangle"></i></div>
+          <h5 class="fw-700">Incident Response</h5>
+          <p class="text-muted mb-0 small">BSI-Meldepflicht automatisch erfüllen: Frühwarnung (24h), Zwischenmeldung (72h), Abschlussbericht (30 Tage) — mit Deadline-Tracking.</p>
+          <div class="mt-2"><small class="text-muted">§32 BSIG</small></div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-diagram-3"></i></div>
+          <h5 class="fw-700">Lieferkettensicherheit</h5>
+          <p class="text-muted mb-0 small">Lieferanten-Risikoregister, AVV-Tracking, ISO 27001-Zertifizierungsstatus, automatisierte Risikobewertung für kritische Zulieferer.</p>
+          <div class="mt-2"><small class="text-muted">§30 Nr. 4</small></div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon bg-success bg-opacity-10 text-success"><i class="bi bi-mortarboard"></i></div>
+          <h5 class="fw-700">Mitarbeiterschulung</h5>
+          <p class="text-muted mb-0 small">Pflichtunterweisungen per E-Mail versenden, Lesebestätigungen tracken, Zertifikate generieren — BSI-Audit-ready.</p>
+          <div class="mt-2"><small class="text-muted">§38 BSIG</small></div>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon bg-secondary bg-opacity-10 text-secondary"><i class="bi bi-radar"></i></div>
+          <h5 class="fw-700">Kontinuierliches Monitoring</h5>
+          <p class="text-muted mb-0 small">Automatisierte Sicherheits-Scans Ihrer Domains (wöchentlich/monatlich/quartalsweise) mit Score-Trending und Alarm-Benachrichtigungen.</p>
+          <div class="mt-2"><small class="text-muted">§30 Nr. 5/6</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="py-6" id="how">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="fw-800">In 4 Schritten zur NIS2-Konformität</h2>
+    </div>
+    <div class="row g-4 justify-content-center">
+      {% for step in [
+        ('1', 'Betroffenheit prüfen', 'Beantworten Sie 5 Fragen — wir ermitteln, ob und wie Ihr Unternehmen unter NIS2 fällt (Besonders wichtig / Wichtig / Nicht betroffen).', 'bi-clipboard-check'),
+        ('2', 'BSI registrieren', 'Füllen Sie den Registrierungsassistenten aus — alle §33 BSIG Pflichtangaben strukturiert erfassen und exportieren.', 'bi-building-check'),
+        ('3', 'Maßnahmen umsetzen', 'KI generiert Ihre ISMS-Dokumente, trackt Incidents, überwacht Lieferanten und trainiert Mitarbeiter — alles in einer Plattform.', 'bi-lightning-charge'),
+        ('4', 'Compliance nachweisen', 'Compliance-Score auf dem Dashboard, exportierbare Audit-Logs, Zertifikate und Berichte — jederzeit BSI-Prüfungs-ready.', 'bi-patch-check'),
+      ] %}
+      <div class="col-md-6 col-lg-3">
+        <div class="d-flex flex-column align-items-center text-center p-3">
+          <div class="step-num mb-3" style="width:48px;height:48px;font-size:1.1rem;">{{ step[0] }}</div>
+          <i class="bi {{ step[3] }} fs-2 text-primary mb-2"></i>
+          <h5 class="fw-700">{{ step[1] }}</h5>
+          <p class="text-muted small">{{ step[2] }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Access -->
+<section class="py-6 bg-light" id="access">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center">
+        <h2 class="fw-800">Zugang für Versicherungsnehmer</h2>
+        <p class="text-muted">
+          Dieses Portal ist im Rahmen Ihres Cyber-Versicherungsschutzes bei
+          {{ insurer_name|default('Ihrer Versicherung') }} enthalten — eine eigenständige Anmeldung
+          oder Buchung ist nicht erforderlich. Ihren Zugang erhalten Sie von Ihrem
+          Versicherungsberater, sobald Ihr Vertrag abgeschlossen ist.
+        </p>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg px-4 mt-2">
+          <i class="bi bi-box-arrow-in-right me-2"></i>Zum Kundenportal
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="py-6">
+  <div class="container">
+    <div class="cta-section">
+      <i class="bi bi-shield-check fs-1 mb-3 d-block" style="color:#93c5fd;"></i>
+      <h2 class="fw-800 mb-2">NIS2-konform, ohne Mehraufwand</h2>
+      <p class="opacity-75 mb-4">Bereitgestellt als Teil Ihres Cyber-Versicherungsschutzes.</p>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-light btn-lg px-5 fw-700">
+        Zum Kundenportal <i class="bi bi-arrow-right ms-2"></i>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Blog Teaser ──────────────────────────────────────────────────────── -->
+<section class="py-5" style="background:#f4f6fb;">
+  <div class="container">
+    <div class="row align-items-center mb-4">
+      <div class="col">
+        <h2 class="fw-700 mb-1" style="font-size:1.6rem; color:#1a3a5c;">
+          <i class="bi bi-shield-lock-fill me-2 text-primary"></i>
+          Cybersicherheit &amp; NIS2 — aktuell &amp; erklärt
+        </h2>
+        <p class="text-muted mb-0">Täglich neue Artikel: Angriffstrends aus den USA, BSI-Warnungen und NIS2-Ratgeber.</p>
+      </div>
+      <div class="col-auto">
+        <a href="{{ url_for('blog.index') }}" class="btn btn-outline-primary btn-sm fw-600">
+          Alle Artikel <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Dynamic latest 3 posts — loaded via simple include or static fallback -->
+    <div class="row g-4" id="blog-teaser-row">
+      {% set latest_posts = [] %}
+      {% if latest_posts %}
+        {% for post in latest_posts %}
+        <div class="col-md-4">
+          <div class="card border-0 shadow-sm h-100" style="border-radius:12px; overflow:hidden;">
+            <div style="height:5px; background:linear-gradient(90deg,#1a3a5c,#0d6efd);"></div>
+            <div class="card-body p-4">
+              <div class="d-flex gap-2 mb-2 align-items-center">
+                <span class="badge bg-primary-subtle text-primary" style="font-size:.65rem;">RATGEBER</span>
+                <small class="text-muted">{{ post.display_date }}</small>
+              </div>
+              <h6 class="fw-600 mb-2">{{ post.title }}</h6>
+              <p class="text-muted small">{{ post.seo_description[:100] }}…</p>
+              <a href="{{ url_for('blog.article', slug=post.slug) }}" class="btn btn-sm btn-outline-primary">
+                Lesen <i class="bi bi-arrow-right ms-1"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <!-- Placeholder cards shown before scheduler publishes first articles -->
+        {% for item in [
+          {'icon': 'bi-exclamation-triangle-fill', 'color': '#dc3545',
+           'title': 'Ransomware 2025: Neue Varianten und Schutzmaßnahmen',
+           'text': 'Aktuelle Ransomware-Familien und wie NIS2-pflichtige Unternehmen sich schützen.'},
+          {'icon': 'bi-envelope-exclamation-fill', 'color': '#fd7e14',
+           'title': 'Phishing mit KI: So erkennen Sie gefälschte E-Mails',
+           'text': 'GPT-generierte Phishing-Mails umgehen klassische Filter — was hilft wirklich?'},
+          {'icon': 'bi-building-lock-fill', 'color': '#0d6efd',
+           'title': 'BSI-Registrierung Schritt für Schritt (§33 BSIG)',
+           'text': 'Welche Unternehmen müssen sich bis wann beim BSI registrieren — und wie geht das?'},
+        ] %}
+        <div class="col-md-4">
+          <div class="card border-0 shadow-sm h-100" style="border-radius:12px; overflow:hidden;">
+            <div style="height:5px; background:linear-gradient(90deg,#1a3a5c,#0d6efd);"></div>
+            <div class="card-body p-4">
+              <div class="mb-3">
+                <i class="{{ item.icon }}" style="font-size:1.75rem; color:{{ item.color }};"></i>
+              </div>
+              <h6 class="fw-600 mb-2">{{ item.title }}</h6>
+              <p class="text-muted small mb-3">{{ item.text }}</p>
+              <a href="{{ url_for('blog.index') }}" class="btn btn-sm btn-outline-primary">
+                Im Blog lesen <i class="bi bi-arrow-right ms-1"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="text-center mt-4">
+      <a href="{{ url_for('blog.feed') }}" class="btn btn-outline-secondary btn-sm me-2" target="_blank">
+        <i class="bi bi-rss me-1"></i>RSS Feed abonnieren
+      </a>
+      <a href="{{ url_for('blog.index') }}" class="btn btn-primary btn-sm fw-600">
+        Alle Artikel ansehen
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-4 mt-4">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-4 mb-2 mb-md-0">
+        <strong class="text-white"><i class="bi bi-shield-lock-fill me-2 text-info"></i>NIS2 Compliance</strong>
+      </div>
+      <div class="col-md-4 text-center mb-2 mb-md-0" style="font-size:.8rem;">
+        © 2025 NIS2 Compliance Platform. Alle Rechte vorbehalten.
+      </div>
+      <div class="col-md-4 text-md-end" style="font-size:.8rem;">
+        <a href="{{ url_for('legal.datenschutz') }}" class="me-3">Datenschutz</a>
+        <a href="{{ url_for('legal.impressum') }}" class="me-3">Impressum</a>
+        <a href="{{ url_for('legal.agb') }}" class="me-3">AGB</a>
+        <a href="mailto:info@andrii-it.de">Kontakt</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

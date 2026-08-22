@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Bericht{% endblock %}
+{% block content %}
+<h1>Bericht — {{ scan.assessment.company_name }}</h1>
+
+{% if scan.status == "running" or scan.status == "pending" %}
+<p>Scan läuft noch…</p>
+{% elif scan.status == "error" %}
+<p class="error">Scan fehlgeschlagen: {{ scan.error_message }}</p>
+{% else %}
+
+<div class="card summary">
+  <span class="tier tier-{{ scan.risk_tier }} big">{{ scan.risk_tier|upper }}</span>
+  <div class="metrics">
+    <div><span class="label">Erwarteter Schaden</span><span class="value">€{{ "{:,.0f}".format(scan.expected_damage_eur).replace(",", ".") }}</span></div>
+    <div><span class="label">Prämien-Spanne</span><span class="value">€{{ "{:,.0f}".format(scan.premium_range_low_eur).replace(",", ".") }} – €{{ "{:,.0f}".format(scan.premium_range_high_eur).replace(",", ".") }}</span></div>
+    <div><span class="label">Risk Multiplier</span><span class="value">{{ scan.multiplier }}x</span></div>
+    <div><span class="label">Scan-Tiefe</span><span class="value">{{ scan.tier }}</span></div>
+    {% if scan.fine_estimate_eur %}
+    <div><span class="label">Bußgeld-Exposure</span><span class="value">€{{ "{:,.0f}".format(scan.fine_estimate_eur).replace(",", ".") }}</span></div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="actions">
+  <a class="button" href="/report/{{ scan.id }}/pdf">Underwriting-Bericht (PDF)</a>
+  <a class="button secondary" href="/report/{{ scan.id }}/client">Kundenbericht ansehen</a>
+  <a class="button secondary" href="/report/{{ scan.id }}/client/pdf">Kundenbericht (PDF)</a>
+  <a class="button secondary" href="/report/{{ scan.id }}/contract">Versicherungsantrag erstellen</a>
+  <a class="button secondary" href="/report/{{ scan.id }}/decision">Underwriter-Entscheidung</a>
+</div>
+
+<div class="card">
+<pre class="report-md">{{ scan.report_markdown }}</pre>
+</div>
+
+{% endif %}
+{% endblock %}

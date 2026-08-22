@@ -1,0 +1,48 @@
+# NIS2 Compliance Platform — Python dependencies
+
+# ── Rate limiting ─────────────────────────────────────────────────
+Flask-Limiter==3.9.0
+
+# ── Web framework ─────────────────────────────────────────────────
+Flask==3.1.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.7
+Flask-Login==0.6.3
+Flask-Mail==0.10.0
+Flask-WTF==1.2.1
+WTForms==3.1.2
+
+# ── Database ──────────────────────────────────────────────────────
+psycopg2-binary==2.9.10
+SQLAlchemy==2.0.36
+
+# ── AI — ISMS document & BSI draft generation ─────────────────────
+# Provider is selected at runtime via LLM_PROVIDER (anthropic | mistral).
+anthropic==0.40.0
+mistralai==1.2.5
+
+# ── Security scanning (site audit) ───────────────────────────────
+requests==2.32.3
+urllib3==2.2.3
+dnspython==2.7.0
+cryptography==43.0.3
+
+# ── Utilities ─────────────────────────────────────────────────────
+python-dotenv==1.0.1
+Werkzeug==3.1.3
+gunicorn==23.0.0
+pytest==8.3.3
+email-validator==2.2.0
+Markdown==3.7
+bleach==6.2.0
+python-dateutil==2.9.0
+
+# ── Scheduling (continuous monitoring) ───────────────────────────
+APScheduler==3.10.4
+
+# ── Export / reports ─────────────────────────────────────────────
+WeasyPrint==62.3
+
+# ── MFA (§30 Nr. 10 BSIG — MFA & sichere Kommunikation) ──────────
+pyotp==2.9.0
+qrcode[pil]==8.2
