@@ -15,12 +15,28 @@ services:
     # Traefik routing — inert unless TRAEFIK_ENABLE=true is set (production
     # host only). RISK_SCANNER_DOMAIN/cfdns cert resolver match the
     # convention already used by this host's other projects.
+    #
+    # /api/* (the machine API nis2-store's microservice_client talks to) is
+    # deliberately NOT reachable through this public router — nis2-store
+    # calls it over the internal docker network (http://risk-scanner:8000)
+    # instead, so nothing legitimate needs it exposed publicly. A second,
+    # higher-priority router matches Host+PathPrefix(/api) and attaches an
+    # ipallowlist middleware with an unreachable source range, so any public
+    # request to /api/* gets a 403 before it reaches the app (the app's own
+    # X-API-Key check on those routes stays as defense in depth).
     labels:
       - "traefik.enable=${RISK_SCANNER_TRAEFIK_ENABLE:-false}"
       - "traefik.http.routers.cyberriskscoring.rule=Host(`${RISK_SCANNER_DOMAIN:-cyberriskscoring.localhost}`)"
       - "traefik.http.routers.cyberriskscoring.entrypoints=websecure"
       - "traefik.http.routers.cyberriskscoring.tls.certresolver=cfdns"
       - "traefik.http.services.cyberriskscoring.loadbalancer.server.port=8000"
+      - "traefik.http.routers.cyberriskscoring-api-block.rule=Host(`${RISK_SCANNER_DOMAIN:-cyberriskscoring.localhost}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.cyberriskscoring-api-block.entrypoints=websecure"
+      - "traefik.http.routers.cyberriskscoring-api-block.tls.certresolver=cfdns"
+      - "traefik.http.routers.cyberriskscoring-api-block.priority=100"
+      - "traefik.http.routers.cyberriskscoring-api-block.service=cyberriskscoring"
+      - "traefik.http.routers.cyberriskscoring-api-block.middlewares=cyberriskscoring-block-public-api"
+      - "traefik.http.middlewares.cyberriskscoring-block-public-api.ipallowlist.sourcerange=127.0.0.1/32"
 
   nis2-postgres:
     image: postgres:16-alpine
