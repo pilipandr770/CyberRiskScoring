@@ -1,8 +1,13 @@
+# Port bindings are overridable per-environment: on a shared host, set
+# RISK_SCANNER_PORT_MAPPING / NIS2_STORE_PORT_MAPPING in the local .env to
+# something like "127.0.0.1:8000:8000" to avoid colliding with other
+# projects' ports or exposing anything before Traefik/TLS is wired up.
+# Local dev defaults keep the previous plain host-port behavior.
 services:
   risk-scanner:
     build: ./services/risk-scanner
     ports:
-      - "8000:8000"
+      - "${RISK_SCANNER_PORT_MAPPING:-8000:8000}"
     env_file:
       - .env
     volumes:
@@ -13,7 +18,7 @@ services:
     environment:
       POSTGRES_DB: nis2_dev
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${NIS2_POSTGRES_PASSWORD:-postgres}
     volumes:
       - nis2_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,7 +30,7 @@ services:
   nis2-store:
     build: ./services/nis2-store
     ports:
-      - "5000:5000"
+      - "${NIS2_STORE_PORT_MAPPING:-5000:5000}"
     env_file:
       - .env.nis2store
     depends_on:
