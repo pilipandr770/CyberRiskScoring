@@ -12,6 +12,15 @@ services:
       - .env
     volumes:
       - risk_scanner_data:/app/data
+    # Traefik routing — inert unless TRAEFIK_ENABLE=true is set (production
+    # host only). RISK_SCANNER_DOMAIN/cfdns cert resolver match the
+    # convention already used by this host's other projects.
+    labels:
+      - "traefik.enable=${RISK_SCANNER_TRAEFIK_ENABLE:-false}"
+      - "traefik.http.routers.cyberriskscoring.rule=Host(`${RISK_SCANNER_DOMAIN:-cyberriskscoring.localhost}`)"
+      - "traefik.http.routers.cyberriskscoring.entrypoints=websecure"
+      - "traefik.http.routers.cyberriskscoring.tls.certresolver=cfdns"
+      - "traefik.http.services.cyberriskscoring.loadbalancer.server.port=8000"
 
   nis2-postgres:
     image: postgres:16-alpine
@@ -36,6 +45,15 @@ services:
     depends_on:
       nis2-postgres:
         condition: service_healthy
+    # Disabled until a domain is picked for the client portal — avoids
+    # Traefik attempting (and failing) an ACME cert request for a
+    # placeholder host.
+    labels:
+      - "traefik.enable=${NIS2_STORE_TRAEFIK_ENABLE:-false}"
+      - "traefik.http.routers.cyberriskscoring-portal.rule=Host(`${NIS2_STORE_DOMAIN:-cyberriskscoring-portal.localhost}`)"
+      - "traefik.http.routers.cyberriskscoring-portal.entrypoints=websecure"
+      - "traefik.http.routers.cyberriskscoring-portal.tls.certresolver=cfdns"
+      - "traefik.http.services.cyberriskscoring-portal.loadbalancer.server.port=5000"
 
 volumes:
   risk_scanner_data:
