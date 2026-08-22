@@ -3,6 +3,14 @@
 {% block content %}
 <div class="card narrow">
   <h1>Agentenanmeldung</h1>
+  <p class="hint">
+    Internes Underwriting-Tool von CyberVersiecherung: ein technischer
+    Sicherheitsscan der Infrastruktur eines Interessenten liefert einen
+    Risikoscore, die DSGVO-/NIS2-Bußgeld-Exposure und einen
+    Prämienvorschlag — als Entscheidungsgrundlage für Vermittler und
+    Underwriter, nicht als automatische Preisfestsetzung. Zugang nur für
+    autorisierte Mitarbeiter der Versicherung.
+  </p>
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
   <form method="post" action="/login">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
