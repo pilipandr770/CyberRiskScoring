@@ -1,3 +1,5 @@
+import threading
+import time
 from datetime import UTC, datetime
 
 from app.extensions import db
@@ -18,17 +20,29 @@ from app.nis2.models import (
 )
 
 
-def _register(client, email: str, password: str = "Secret123!"):
+def _register(client, flask_app, email: str, password: str = "Secret123!"):
+    # Creates + logs in a user the way accounts are actually created now —
+    # public self-registration (/auth/register) was disabled this session
+    # (insurer-gated access only); real accounts come from the M2
+    # provisioning webhook (app/nis2/provisioning.py), which creates the
+    # User row directly rather than through a signup form.
+    with flask_app.app_context():
+        user = User(
+            email=email,
+            company_name="Ops GmbH",
+            first_name="Ops",
+            last_name="Tester",
+            subscription_plan="active",
+            is_active=True,
+            is_email_confirmed=True,
+        )
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+
     resp = client.post(
-        "/auth/register",
-        data={
-            "email": email,
-            "password": password,
-            "password2": password,
-            "company_name": "Ops GmbH",
-            "first_name": "Ops",
-            "last_name": "Tester",
-        },
+        "/auth/login",
+        data={"email": email, "password": password},
         follow_redirects=False,
     )
     assert resp.status_code == 302
@@ -36,7 +50,7 @@ def _register(client, email: str, password: str = "Secret123!"):
 
 
 def test_operational_routes_work_without_db_hacks(flask_app, client, monkeypatch):
-    _register(client, "ops@example.com")
+    _register(client, flask_app, "ops@example.com")
 
     # Dashboard and static paid page.
     assert client.get("/nis2/").status_code == 200
@@ -105,12 +119,26 @@ def test_operational_routes_work_without_db_hacks(flask_app, client, monkeypatch
         _fake_generate_document,
     )
 
+    # Generation runs in a background thread (see isms_docs/routes.py) — the
+    # initial response only carries job_id; poll until the job (patched to
+    # run synchronously fast above) reports done.
     gen_one = client.post(
         f"/nis2/isms/interview/{interview_id}/generate-one",
         json={"doc_type": "security_policy", "regenerate": True},
     )
     assert gen_one.status_code == 200
-    doc_id = gen_one.get_json()["id"]
+    job_id = gen_one.get_json()["job_id"]
+
+    job_status = None
+    for _ in range(50):
+        poll_resp = client.get(f"/nis2/isms/interview/{interview_id}/generate-one/poll/{job_id}")
+        assert poll_resp.status_code == 200
+        job_status = poll_resp.get_json()
+        if job_status["status"] in ("done", "error"):
+            break
+        time.sleep(0.05)
+    assert job_status["status"] == "done", job_status
+    doc_id = job_status["id"]
 
     assert client.get(f"/nis2/isms/interview/{interview_id}/documents").status_code == 200
     assert client.get(f"/nis2/isms/documents/{doc_id}").status_code == 200
@@ -319,15 +347,31 @@ def test_operational_routes_work_without_db_hacks(flask_app, client, monkeypatch
     monkeypatch.setattr("app.nis2.site_audit.audit_agent.run_audit", _fake_run_audit)
 
     class _ImmediateThread:
-        def __init__(self, target, args=(), kwargs=None, daemon=None):
+        def __init__(self, target=None, args=(), kwargs=None, daemon=None):
             self._target = target
             self._args = args
             self._kwargs = kwargs or {}
 
         def start(self):
-            self._target(*self._args, **self._kwargs)
+            if self._target is not None:
+                self._target(*self._args, **self._kwargs)
 
-    monkeypatch.setattr("app.nis2.site_audit.routes.threading.Thread", _ImmediateThread)
+    # `routes.threading.Thread = _ImmediateThread` would rebind the real
+    # stdlib `threading` module's Thread attribute process-wide (routes.py
+    # holds `threading` itself, not a copy) — breaking anything else in the
+    # same process that relies on genuine Thread/Timer internals, e.g.
+    # Flask-Limiter's in-memory storage, which schedules a real
+    # threading.Timer for its expiry sweep. Swap in a proxy object for the
+    # `threading` name as seen only inside routes.py, delegating everything
+    # except Thread to the real module, so nothing outside this route is
+    # affected.
+    class _FakeThreadingModule:
+        Thread = _ImmediateThread
+
+        def __getattr__(self, name):
+            return getattr(threading, name)
+
+    monkeypatch.setattr("app.nis2.site_audit.routes.threading", _FakeThreadingModule())
 
     start_audit = client.post("/nis2/audit/start", data={"target": "https://example.com"}, follow_redirects=False)
     assert start_audit.status_code == 302

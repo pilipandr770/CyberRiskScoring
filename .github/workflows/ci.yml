@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile-check risk-scanner
+        run: python -m compileall -q services/risk-scanner/app
+      - name: Compile-check nis2-store
+        run: python -m compileall -q -x '/(static|migrations)/' services/nis2-store
+
+  nis2-store-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install native deps (WeasyPrint PDF rendering, dig for live_check)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            dnsutils \
+            libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 \
+            libffi-dev shared-mime-info fonts-dejavu-core
+      - name: Install Python deps
+        working-directory: services/nis2-store
+        run: pip install -r requirements.txt
+      # In-memory SQLite (TestingConfig) — no Postgres needed. Deliberately
+      # no NIS2_MICROSERVICE_URL/.env file here, matching a real CI
+      # checkout, so site-audit tests exercise the local fallback path
+      # rather than trying to reach the sibling risk-scanner service.
+      - name: Run pytest
+        working-directory: services/nis2-store
+        run: python -m pytest -q
+
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [risk-scanner, nis2-store]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ${{ matrix.service }} image
+        run: docker build -t cyberriskscoring-${{ matrix.service }}:ci ./services/${{ matrix.service }}

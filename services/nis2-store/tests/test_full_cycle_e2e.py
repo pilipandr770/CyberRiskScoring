@@ -19,21 +19,32 @@ def test_full_user_cycle_to_100_percent_compliance(flask_app, client):
     email = "cycle@example.com"
     password = "Secret123!"
 
-    # 1) Register new user through real auth flow.
-    register_resp = client.post(
-        "/auth/register",
-        data={
-            "email": email,
-            "password": password,
-            "password2": password,
-            "company_name": "Cycle GmbH",
-            "first_name": "Max",
-            "last_name": "Tester",
-        },
+    # 1) Create + log in as a new user the way accounts are actually created
+    # now — public self-registration (/auth/register) was disabled this
+    # session (insurer-gated access only); real accounts come from the M2
+    # provisioning webhook (app/nis2/provisioning.py), which creates the
+    # User row directly. Mirror that here instead of the old register POST.
+    with flask_app.app_context():
+        user = User(
+            email=email,
+            company_name="Cycle GmbH",
+            first_name="Max",
+            last_name="Tester",
+            subscription_plan="active",
+            is_active=True,
+            is_email_confirmed=True,
+        )
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+
+    login_resp = client.post(
+        "/auth/login",
+        data={"email": email, "password": password},
         follow_redirects=False,
     )
-    assert register_resp.status_code == 302
-    assert "/nis2/" in register_resp.headers["Location"]
+    assert login_resp.status_code == 302
+    assert "/nis2/" in login_resp.headers["Location"]
 
     # 2) Run BSI wizard end-to-end using routes.
     start_resp = client.post("/nis2/bsi-registration/wizard/start", follow_redirects=False)
