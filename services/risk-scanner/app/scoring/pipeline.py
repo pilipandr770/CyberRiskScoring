@@ -29,12 +29,21 @@ async def _matched_cve_findings(product: str, version: str | None, category: str
         findings.append({
             "key": f"{key_prefix}:{m['cve_id']}",
             "source": "cve_cache",
-            "product": product,
+            # The banner/search string we matched against — kept separately
+            "queried_product": product,
+            # ...from what the CVE record actually says it affects. These can
+            # differ (loose substring match), and collapsing them into one
+            # "product" field used to launder a wrong attribution into
+            # fluent report prose with no way to tell it happened.
+            "product": m.get("product") or product,
+            "matched_vendor": m.get("vendor") or "",
             "cve": m["cve_id"],
             "cvss": cvss_score,
             "epss": info.get("epss", 0.0),
             "kev": info.get("kev", False),
             "category": category,
+            "description": m.get("description") or "",
+            "version_verified": m.get("version_verified", "no_version_given"),
         })
     return findings
 
@@ -58,9 +67,15 @@ async def _findings_from_shodan(shodan_hosts: list[dict]) -> list[dict]:
         info = enriched.get(cve, {"epss": 0.0, "kev": False})
         # Shodan sometimes hands us a real per-CVE cvss score (preserved in
         # cve_scores by shodan_client); fall back to a conservative 7.0/High
-        # only when it genuinely didn't provide one.
-        cvss_score = (svc.get("cve_scores") or {}).get(cve) or 7.0
+        # only when it genuinely didn't provide one. `or 7.0` would also
+        # replace a real score of 0.0 (falsy) — use an explicit None check.
+        _real_score = (svc.get("cve_scores") or {}).get(cve)
+        cvss_score = _real_score if _real_score is not None else 7.0
         category = "iot_ot_cve" if svc.get("is_iot_ot") else "internet_facing_data"
+        # Shodan already gives us a trusted CVE ID directly (not a fuzzy
+        # product-name match) — look up its real description by that exact
+        # ID so the report doesn't have to describe it from the ID alone.
+        cached = cve_dataset.get_by_cve_id(cve)
         findings.append({
             "key": f"{ip}:{svc.get('port')}:{cve}",
             "source": "shodan",
@@ -70,6 +85,8 @@ async def _findings_from_shodan(shodan_hosts: list[dict]) -> list[dict]:
             "epss": info.get("epss", 0.0),
             "kev": info.get("kev", False),
             "category": category,
+            "description": (cached or {}).get("description") or "",
+            "version_verified": "n/a",
         })
 
     # For services Shodan didn't already tag with a CVE, try the local
@@ -154,6 +171,33 @@ async def _findings_from_nmap(nmap_hosts: list[dict]) -> list[dict]:
     return findings
 
 
+def _collect_data_quality_warnings(
+    shodan_hosts: list[dict], nmap_hosts: list[dict], cve_cache_ready: bool
+) -> list[str]:
+    """A failed data source (revoked/rate-limited Shodan key, nmap error, an
+    empty CVE cache) must never be silently indistinguishable from "this
+    infrastructure is clean" — that's the single most misleading thing this
+    report could do to an underwriter. Surface every real failure by name;
+    "no Shodan data for this host" is excluded because it's a normal,
+    non-failure outcome (the host just isn't indexed)."""
+    warnings = []
+    for h in shodan_hosts:
+        err = h.get("error")
+        if err and err != "no Shodan data for this host":
+            warnings.append(f"Shodan-Abfrage für {h['ip']} nicht erfolgreich: {err}")
+    for h in nmap_hosts:
+        err = h.get("error")
+        if err:
+            warnings.append(f"nmap-Scan für {h['ip']} nicht erfolgreich: {err}")
+    if not cve_cache_ready:
+        warnings.append(
+            "Lokaler CVE-Cache ist nicht verfügbar (Erstbefüllung läuft noch oder "
+            "letzter Refresh fehlgeschlagen) — der CVE-Abgleich für erkannte "
+            "Produkt-/Versions-Banner wurde für diesen Scan übersprungen."
+        )
+    return warnings
+
+
 def _dedupe_by_cve(findings: list[dict]) -> list[dict]:
     """Shodan, nmap, and nuclei can each independently surface the same
     real CVE on the same host (e.g. version-detected two ways). Same CVE
@@ -181,6 +225,8 @@ async def run_scan(assessment) -> dict:
     tier = "Tier 0"
     shodan_findings: list[dict] = []
     nmap_findings: list[dict] = []
+    shodan_hosts: list[dict] = []
+    nmap_hosts: list[dict] = []
     if assessment.office_ip:
         tier = "Tier 1"
         shodan_hosts = await shodan_client.lookup_range(assessment.office_ip)
@@ -190,6 +236,10 @@ async def run_scan(assessment) -> dict:
 
     recon_findings = await _findings_from_recon(recon)
     all_findings = _dedupe_by_cve(shodan_findings + nmap_findings + recon_findings)
+
+    data_quality_warnings = _collect_data_quality_warnings(
+        shodan_hosts, nmap_hosts, cve_dataset.cache_status().get("ready", False)
+    )
 
     formal_check = await regulatory_check.check_formal_requirements(assessment.domain)
 
@@ -205,6 +255,16 @@ async def run_scan(assessment) -> dict:
     ransom = risk_formula.ransom_exposure(assessment.annual_turnover_eur)
     premium = risk_formula.premium_range(damage)
     tier_label = risk_formula.risk_tier_label(multiplier)
+
+    # Decompose the one aggregate damage figure back onto individual
+    # findings (proportional to each finding's own contribution to
+    # raw_score) so the report can say "this finding accounts for
+    # approximately €X of the total" instead of only a company-wide number.
+    damage_shares = risk_formula.finding_damage_shares(all_findings, agg["raw_score"], damage)
+    for f in all_findings:
+        share = damage_shares.get(f["key"], {"damage_share_eur": 0.0, "counted_in_score": False})
+        f["damage_share_eur"] = share["damage_share_eur"]
+        f["counted_in_score"] = share["counted_in_score"]
 
     scoring = {"raw_score_info": agg}
 
@@ -222,6 +282,7 @@ async def run_scan(assessment) -> dict:
         risk_tier=tier_label,
         recon=recon,
         formal_check=formal_check,
+        data_quality_warnings=data_quality_warnings,
     )
 
     client_report_md = await client_report_generator.build_client_report(
@@ -231,12 +292,17 @@ async def run_scan(assessment) -> dict:
         findings=all_findings,
         risk_tier=tier_label,
         formal_check=formal_check,
+        data_quality_warnings=data_quality_warnings,
     )
 
     return {
         "tier": tier,
         "raw_findings_json": json.dumps(
-            {"recon": recon, "findings": all_findings, "formal_check": formal_check}, default=str
+            {
+                "recon": recon, "findings": all_findings, "formal_check": formal_check,
+                "data_quality_warnings": data_quality_warnings,
+            },
+            default=str,
         ),
         "raw_score": agg["raw_score"],
         "multiplier": multiplier,

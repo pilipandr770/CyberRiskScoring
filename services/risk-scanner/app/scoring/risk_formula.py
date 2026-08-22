@@ -56,6 +56,45 @@ def aggregate_raw_score(findings: list[dict], reg_gap_points: float) -> dict:
     }
 
 
+def finding_damage_shares(findings: list[dict], raw_score_total: float, expected_damage_eur: float) -> dict[str, dict]:
+    """Per-finding share of the aggregate expected_damage_eur, proportional
+    to that finding's own contribution to raw_score. This is a reporting
+    decomposition of the one number already computed elsewhere, not a
+    second independent calculation — shares are proportional to raw_score
+    contribution, so they sum to (at most) expected_damage_eur and can be
+    shown next to the total without double-counting it.
+
+    A finding that fell outside its category's top-5 cap in
+    aggregate_raw_score contributed nothing to raw_score, and gets an
+    explicit 0-euro share here (counted=False) rather than being silently
+    left unlabelled — the report should say "capped out by other findings
+    in this category", not just omit the number."""
+    if raw_score_total <= 0:
+        return {}
+    by_category: dict[str, list[tuple[str, float]]] = {}
+    for f in findings:
+        cat = f.get("category", "internet_facing_generic")
+        score = finding_score(f.get("cvss", 0.0), f.get("epss", 0.0))
+        if f.get("kev"):
+            score *= 1.15
+        by_category.setdefault(cat, []).append((f["key"], round(score, 2)))
+
+    shares: dict[str, dict] = {}
+    for cat, items in by_category.items():
+        weight = CATEGORY_WEIGHTS.get(cat, 1.0)
+        counted_keys = {k for k, _ in sorted(items, key=lambda kv: kv[1], reverse=True)[:_TOP_N_PER_CATEGORY]}
+        for key, score in items:
+            if key in counted_keys:
+                weighted = weight * score
+                shares[key] = {
+                    "damage_share_eur": round(expected_damage_eur * weighted / raw_score_total, 0),
+                    "counted_in_score": True,
+                }
+            else:
+                shares[key] = {"damage_share_eur": 0.0, "counted_in_score": False}
+    return shares
+
+
 def raw_score_to_multiplier(raw_score: float) -> float:
     if raw_score <= 0.5:
         return MULTIPLIER_FLOOR_CLEAN

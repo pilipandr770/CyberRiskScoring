@@ -75,7 +75,7 @@ async def _httpx_probe(hosts: list[str]) -> list[dict]:
         try:
             stdout, _stderr, _rc = await tool_runner.run(
                 ["httpx", "-silent", "-json", "-tech-detect", "-status-code",
-                 "-follow-redirects", "-timeout", "10"],
+                 "-follow-redirects", "-include-response-header", "-timeout", "10"],
                 timeout=90, input_data="\n".join(hosts),
             )
             rows = tool_runner.parse_jsonlines(stdout)
@@ -90,7 +90,11 @@ async def _httpx_probe(hosts: list[str]) -> list[dict]:
                         "status_code": row.get("status_code"),
                         "server": row.get("webserver"),
                         "tech_hints": row.get("tech", []),
-                        "has_hsts": "strict-transport-security" in {
+                        # httpx normalizes header names to snake_case in its
+                        # JSON output (e.g. "strict_transport_security"), not
+                        # the hyphenated wire form — matching on the hyphenated
+                        # string here always missed a real HSTS header.
+                        "has_hsts": "strict_transport_security" in {
                             h.lower() for h in (row.get("header", {}) or {}).keys()
                         } if isinstance(row.get("header"), dict) else False,
                         "error": None,

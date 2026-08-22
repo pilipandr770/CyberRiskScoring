@@ -6,11 +6,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev shared-mime-info fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 # ProjectDiscovery recon/detection tools — prebuilt release binaries (same
 # tools BB_Assist uses, minus its active-exploit set: no ffuf/dalfox/sqlmap/
 # interactsh-client here, per this project's non-destructive scan boundary).
 # Self-contained in the image on purpose — this container can't reach the
 # user's local BB_Assist install, so everything it needs has to live here.
+#
+# Must run AFTER `pip install`: the Python `httpx` package (requirements.txt)
+# installs its own console-script stub at /usr/local/bin/httpx, which
+# silently overwrote this real Go binary when this step ran first — every
+# scan's httpx-based tech-detect/HSTS check was then silently falling back
+# to the plain-Python manual probe instead of the intended tool, with no
+# error anywhere (tool_runner.is_available() only checks the file exists).
 RUN set -eux; \
     for repo in projectdiscovery/subfinder projectdiscovery/dnsx projectdiscovery/httpx projectdiscovery/nuclei; do \
       name=$(basename "$repo"); \
@@ -25,11 +37,6 @@ RUN set -eux; \
 
 # Pre-fetch nuclei templates at build time so the first real scan isn't slow.
 RUN nuclei -update-templates -silent || true
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 RUN mkdir -p /app/data

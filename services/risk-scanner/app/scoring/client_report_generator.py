@@ -19,9 +19,20 @@ purpose, different confidentiality boundary:
   legal compliance review.
 """
 
+import asyncio
+import json
+import logging
+
 from app.config import ANTHROPIC_API_KEY, INSURER_NAME, LLM_MODEL
 
+log = logging.getLogger("client_report_generator")
+
 _SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "informational": 4}
+# See report_generator.py's identical batching comment — one call per whole
+# finding list reliably hit max_tokens on realistic scans, truncating the
+# JSON and silently discarding remediation text for every finding, not just
+# the ones past the cutoff.
+_BATCH_SIZE = 10
 
 
 def _severity_from_cvss(cvss: float) -> str:
@@ -36,34 +47,55 @@ def _severity_from_cvss(cvss: float) -> str:
     return "informational"
 
 
-async def _remediation_actions_with_llm(findings: list[dict], company_name: str) -> dict[str, str]:
-    if not ANTHROPIC_API_KEY or not findings:
-        return {}
-    try:
-        import anthropic
-        client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
-        items = "\n".join(
-            f"- key={f['key']} | product={f.get('product')} | cve={f.get('cve')} | category={f.get('category')}"
-            for f in findings
-        )
-        prompt = f"""You write short, concrete remediation instructions for {company_name}'s IT team/web
+async def _remediate_batch(batch: list[dict], company_name: str) -> dict[str, str]:
+    import anthropic
+    client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+    items = "\n".join(
+        f"- key={f['key']} | product={f.get('product')} | cve={f.get('cve')} | category={f.get('category')} | "
+        f"description={(f.get('description') or 'NONE')[:400]}"
+        for f in batch
+    )
+    prompt = f"""You write short, concrete remediation instructions for {company_name}'s IT team/web
 agency, based on a security scan. No CVE jargon in the sentence — describe the fix in plain,
-actionable terms (what to update, configure, or change). One imperative sentence per finding.
+actionable terms (what to update, configure, or change), grounded strictly in the "description"
+field given for each finding. If description is "NONE", give a generic but honest instruction (e.g.
+"update this component to the latest vendor-supported version") — never invent what the specific
+flaw is from the CVE ID alone. One imperative sentence per finding.
 Return strict JSON: {{"<key>": "<action>", ...}}
 
 Findings:
 {items}
 """
-        msg = await client.messages.create(
-            model=LLM_MODEL, max_tokens=1500, temperature=0.3,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = msg.content[0].text if msg.content else "{}"
-        import json
-        start, end = text.find("{"), text.rfind("}")
-        return json.loads(text[start:end + 1]) if start != -1 else {}
-    except Exception:
+    msg = await client.messages.create(
+        model=LLM_MODEL, max_tokens=1500, temperature=0.3,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = msg.content[0].text if msg.content else "{}"
+    if msg.stop_reason == "max_tokens":
+        log.warning("client_report_generator: LLM batch truncated for %d findings", len(batch))
         return {}
+    start, end = text.find("{"), text.rfind("}")
+    try:
+        return json.loads(text[start:end + 1]) if start != -1 else {}
+    except json.JSONDecodeError as exc:
+        log.warning("client_report_generator: LLM batch JSON parse failed: %s", exc)
+        return {}
+
+
+async def _remediation_actions_with_llm(findings: list[dict], company_name: str) -> dict[str, str]:
+    if not ANTHROPIC_API_KEY or not findings:
+        return {}
+    batches = [findings[i:i + _BATCH_SIZE] for i in range(0, len(findings), _BATCH_SIZE)]
+    results = await asyncio.gather(
+        *(_remediate_batch(b, company_name) for b in batches), return_exceptions=True
+    )
+    merged: dict[str, str] = {}
+    for r in results:
+        if isinstance(r, dict):
+            merged.update(r)
+        elif isinstance(r, Exception):
+            log.warning("client_report_generator: LLM batch failed: %s", r)
+    return merged
 
 
 def _fallback_action(f: dict) -> str:
@@ -93,7 +125,8 @@ def _formal_compliance_actions(formal_check: dict) -> list[str]:
 
 async def build_client_report(*, company_name: str, domain: str, tier: str,
                                findings: list[dict], risk_tier: str,
-                               formal_check: dict) -> str:
+                               formal_check: dict,
+                               data_quality_warnings: list[str] | None = None) -> str:
     actions_by_key = await _remediation_actions_with_llm(findings, company_name)
 
     ranked = sorted(findings, key=lambda f: _SEVERITY_ORDER.get(_severity_from_cvss(f.get("cvss") or 0), 5))
@@ -115,6 +148,15 @@ async def build_client_report(*, company_name: str, domain: str, tier: str,
     lines.append("## Zusammenfassung\n")
     lines.append(f"{tier_status}\n")
     lines.append(f"Geprüft wurde: {domain} ({'Ihre Website' if tier == 'Tier 0' else 'Ihre Website und Ihre Büro-/Netzwerkinfrastruktur'}).\n")
+
+    if data_quality_warnings:
+        lines.append(
+            "*Hinweis: Ein Teil der technischen Prüfung konnte bei diesem Durchlauf nicht "
+            "vollständig durchgeführt werden (z.B. eine externe Datenquelle war nicht erreichbar). "
+            "Die oben genannten Ergebnisse spiegeln nur die tatsächlich verfügbaren Prüfungen wider "
+            "— ein unauffälliger Bereich bedeutet hier nicht zwangsläufig, dass dort keine Risiken "
+            "bestehen.*\n"
+        )
 
     lines.append("## Empfohlene Maßnahmen (nach Priorität)\n")
     if not ranked and not formal_check.get("has_violation"):

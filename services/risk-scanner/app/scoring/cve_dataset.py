@@ -12,8 +12,10 @@ cache is rebuilt from on each refresh, not something queried directly.
 """
 
 import csv
+import json
 import logging
 import os
+import re
 import subprocess
 import time
 from datetime import datetime, timezone
@@ -26,7 +28,17 @@ from app.config import (
 log = logging.getLogger("cve_dataset")
 
 _index: list[dict] | None = None
-_FIELDNAMES = ["cve_id", "vendor", "product", "version", "cvss_score", "published"]
+# version_ranges: JSON-encoded list of {"start", "end", "end_type"} — the
+# raw CVE JSON 5.0 "versions" constraints for this product, kept so match()
+# can actually check whether a *given* version falls in the affected range
+# instead of only reordering by exact-string match. description: truncated
+# CNA description text, so the LLM has something real to describe instead
+# of just a bare CVE ID.
+_FIELDNAMES = [
+    "cve_id", "vendor", "product", "version", "cvss_score", "published",
+    "version_ranges", "description",
+]
+_MAX_DESCRIPTION_CHARS = 500
 
 
 def _years_back_list() -> list[str]:
@@ -59,8 +71,38 @@ def _ensure_repo() -> None:
         _run_git(["reset", "--hard", "origin/HEAD"], cwd=CVE_CACHE_REPO_DIR)
 
 
+def _extract_description(cna: dict) -> str:
+    for d in cna.get("descriptions") or []:
+        if str(d.get("lang", "")).lower().startswith("en") and d.get("value"):
+            return str(d["value"])[:_MAX_DESCRIPTION_CHARS]
+    for d in cna.get("descriptions") or []:
+        if d.get("value"):
+            return str(d["value"])[:_MAX_DESCRIPTION_CHARS]
+    return ""
+
+
+def _extract_version_ranges(versions: list[dict]) -> list[dict]:
+    """Every 'affected' constraint for one product, kept as (start, end,
+    end_type) so match() can later check a *given* version against the
+    actual range instead of just the single string this used to collapse
+    everything down to."""
+    ranges = []
+    for v in versions:
+        if v.get("status") != "affected":
+            continue
+        start = v.get("version") or ""
+        if v.get("lessThan"):
+            ranges.append({"start": start, "end": v["lessThan"], "end_type": "lessThan"})
+        elif v.get("lessThanOrEqual"):
+            ranges.append({"start": start, "end": v["lessThanOrEqual"], "end_type": "lessThanOrEqual"})
+        elif start:
+            # A single fixed version with no upper bound in this record —
+            # treat it as affecting just that exact version.
+            ranges.append({"start": start, "end": start, "end_type": "lessThanOrEqual"})
+    return ranges
+
+
 def _extract_rows(path: str) -> list[dict]:
-    import json
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -87,10 +129,12 @@ def _extract_rows(path: str) -> list[dict]:
             break
 
     published = meta.get("datePublished", "") or ""
+    description = _extract_description(cna)
 
     if not affected:
         return [{"cve_id": cve_id, "vendor": "", "product": "", "version": "",
-                  "cvss_score": cvss_score, "published": published}]
+                  "cvss_score": cvss_score, "published": published,
+                  "version_ranges": "[]", "description": description}]
 
     rows = []
     for a in affected:
@@ -98,13 +142,20 @@ def _extract_rows(path: str) -> list[dict]:
         product = str(a.get("product") or "").strip()
         if not product:
             continue
+        raw_versions = a.get("versions") or []
+        version_ranges = _extract_version_ranges(raw_versions)
+        # Keep the old single-string field too — still used as the
+        # "exact-match reorder" hint and shown in the technical appendix.
         version_str = ""
-        for v in a.get("versions") or []:
+        for v in raw_versions:
             if v.get("status") == "affected":
                 version_str = v.get("version") or v.get("lessThan") or ""
                 break
-        rows.append({"cve_id": cve_id, "vendor": vendor, "product": product,
-                      "version": version_str, "cvss_score": cvss_score, "published": published})
+        rows.append({
+            "cve_id": cve_id, "vendor": vendor, "product": product,
+            "version": version_str, "cvss_score": cvss_score, "published": published,
+            "version_ranges": json.dumps(version_ranges), "description": description,
+        })
     return rows
 
 
@@ -168,12 +219,51 @@ def load_index(force: bool = False) -> list[dict]:
     return _index
 
 
+def _version_tuple(v: str) -> tuple[int, ...] | None:
+    """Loose numeric-tuple parse — real-world banners (e.g. nmap/Shodan's
+    "6.6.1p1 Ubuntu 2ubuntu2.13") aren't valid semver, so a strict parser
+    (e.g. packaging.version) rejects most of them. Extracting the leading
+    dotted-number run is a deliberately conservative compromise: good
+    enough to compare "1.18.0" against "1.20.0", honest (returns None, not
+    a guess) when there's nothing numeric to compare at all."""
+    if not v:
+        return None
+    m = re.match(r"^\s*v?(\d+(?:\.\d+)*)", v)
+    if not m:
+        return None
+    return tuple(int(part) for part in m.group(1).split("."))
+
+
+def _version_in_range(candidate: tuple[int, ...], start: str, end: str, end_type: str) -> bool | None:
+    """True/False when both bounds are numerically comparable to the
+    candidate; None when they aren't (e.g. a non-numeric version scheme) —
+    callers must treat None as "can't verify", never as a match."""
+    end_t = _version_tuple(end)
+    if end_t is None:
+        return None
+    if end_type == "lessThan":
+        if candidate >= end_t:
+            return False
+    else:  # lessThanOrEqual
+        if candidate > end_t:
+            return False
+    start_t = _version_tuple(start) if start else None
+    if start_t is not None and candidate < start_t:
+        return False
+    return True
+
+
 def match(product: str, version: str | None = None, limit: int = 5) -> list[dict]:
-    """Substring match on product/vendor against the local cache. Version,
-    when given, only reorders results (exact-version hits first) — it does
-    not filter, since most cached entries don't carry a full version range
-    we can safely evaluate. Best-effort matching, not authoritative CPE
-    resolution; good enough to surface candidates for EPSS/KEV enrichment."""
+    """Substring match on product/vendor against the local cache, then — when
+    a version is given and the cached record has parseable version-range
+    data — actually filter out candidates the given version is definitely
+    NOT affected by, instead of only reordering by exact-string match.
+    Ambiguous cases (non-numeric version schemes, missing range data) are
+    kept but flagged via "version_verified", never silently dropped or
+    silently presented as confirmed.
+
+    Best-effort matching, not authoritative CPE resolution; good enough to
+    surface candidates for EPSS/KEV enrichment."""
     index = load_index()
     if not index or not product:
         return []
@@ -183,9 +273,49 @@ def match(product: str, version: str | None = None, limit: int = 5) -> list[dict
         if (r.get("product") and (r["product"].lower() in p or p in r["product"].lower()))
         or (r.get("vendor") and r["vendor"].lower() in p)
     ]
-    if version:
-        hits.sort(key=lambda r: 0 if r.get("version") == version else 1)
+
+    candidate_tuple = _version_tuple(version) if version else None
+    if candidate_tuple is not None:
+        kept = []
+        for r in hits:
+            try:
+                ranges = json.loads(r.get("version_ranges") or "[]")
+            except (json.JSONDecodeError, TypeError):
+                ranges = []
+            if not ranges:
+                r["version_verified"] = "no_range_data"
+                kept.append(r)
+                continue
+            verdicts = [
+                _version_in_range(candidate_tuple, rg.get("start", ""), rg.get("end", ""), rg.get("end_type", "lessThan"))
+                for rg in ranges
+            ]
+            if any(v is True for v in verdicts):
+                r["version_verified"] = "yes"
+                kept.append(r)
+            elif all(v is False for v in verdicts):
+                continue  # definitely not affected — this is the actual fix
+            else:
+                r["version_verified"] = "unknown_scheme"
+                kept.append(r)
+        hits = kept
+        hits.sort(key=lambda r: 0 if r.get("version_verified") == "yes" else 1)
+    else:
+        for r in hits:
+            r["version_verified"] = "no_version_given"
+
     return hits[:limit]
+
+
+def get_by_cve_id(cve_id: str) -> dict | None:
+    """Exact CVE-ID lookup — for findings that already carry a trusted CVE ID
+    from elsewhere (e.g. Shodan's own vuln list) and just need the real
+    description text, without going through the fuzzy product/vendor
+    substring match at all."""
+    for r in load_index():
+        if r.get("cve_id") == cve_id:
+            return r
+    return None
 
 
 def cache_status() -> dict:
