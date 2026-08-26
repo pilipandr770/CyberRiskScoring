@@ -4,7 +4,8 @@
 <h1>Bericht — {{ scan.assessment.company_name }}</h1>
 
 {% if scan.status == "running" or scan.status == "pending" %}
-<p>Scan läuft noch…</p>
+<meta http-equiv="refresh" content="4">
+<p>Scan läuft noch… Diese Seite aktualisiert sich automatisch alle paar Sekunden.</p>
 {% elif scan.status == "error" %}
 <p class="error">Scan fehlgeschlagen: {{ scan.error_message }}</p>
 {% else %}
