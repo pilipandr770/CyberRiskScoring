@@ -62,6 +62,39 @@ async def submit_decision(
         scan.m3_provisioned = "yes" if result["status"] == "ok" else ("failed" if result["status"] == "failed" else "no")
         scan.m3_provisioned_at = datetime.utcnow() if result["status"] == "ok" else None
         scan.m3_provision_error = result.get("reason")
+        if result["status"] == "ok":
+            scan.m3_email_sent = "yes" if result.get("email_sent") else "no"
+            scan.m3_email_sent_at = datetime.utcnow()
         db.commit()
+
+    return RedirectResponse(url=f"/report/{scan_id}/decision", status_code=303)
+
+
+@router.post("/report/{scan_id}/resend-access")
+async def resend_access_email(
+    scan_id: str, request: Request, db: Session = Depends(get_db),
+    csrf_token: str = Form(...),
+):
+    """Manual "send access email again" action — nis2-store only emails on
+    first account creation, so re-accepting a decision (or a client simply
+    losing/never opening the original email) otherwise left the agent with
+    no way to trigger a fresh one. Forces a real (re)send regardless of
+    whether the account already existed."""
+    scan = _get_owned_scan(scan_id, request, db)
+    verify_csrf(request, csrf_token)
+
+    if scan.decision_status not in ("accepted", "adjusted"):
+        raise HTTPException(status_code=409, detail="Decision must be accepted/adjusted first")
+
+    result = await provision(assessment=scan.assessment, scan=scan, force_resend=True)
+    scan.m3_provisioned = "yes" if result["status"] == "ok" else ("failed" if result["status"] == "failed" else scan.m3_provisioned)
+    if result["status"] == "ok":
+        scan.m3_provisioned_at = datetime.utcnow()
+        scan.m3_provision_error = None
+        scan.m3_email_sent = "yes" if result.get("email_sent") else "no"
+        scan.m3_email_sent_at = datetime.utcnow()
+    else:
+        scan.m3_provision_error = result.get("reason")
+    db.commit()
 
     return RedirectResponse(url=f"/report/{scan_id}/decision", status_code=303)

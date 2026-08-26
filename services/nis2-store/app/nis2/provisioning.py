@@ -75,6 +75,12 @@ def provisioning_webhook():
     domain = (payload.get('domain') or '').strip()
     contact_email = (payload.get('contact_email') or '').strip().lower()
     scan_id = payload.get('scan_id')
+    # Explicit resend request (agent clicked "send access email again" in
+    # risk-scanner) — without this, an account that already existed (e.g.
+    # from an earlier test, or the client's original welcome email having
+    # expired unused) silently got no email at all on every later call,
+    # with no way to trigger one again. See the `if created:` gate below.
+    force_resend = bool(payload.get('force_resend'))
 
     if not company_name or not domain:
         return jsonify({'error': 'company_name and domain are required'}), 400
@@ -139,15 +145,22 @@ def provisioning_webhook():
 
     db.session.commit()
 
-    if created:
+    email_sent = False
+    email_error = None
+    if created or force_resend:
         token = user.generate_reset_token()
         db.session.commit()
         try:
             _send_welcome_email(user, token)
+            email_sent = True
         except Exception as exc:
             logger.warning('Could not send welcome email to %s: %s', contact_email, exc)
+            email_error = str(exc)
 
-    return jsonify({'status': 'ok', 'created': created, 'user_id': user.id}), 200
+    return jsonify({
+        'status': 'ok', 'created': created, 'user_id': user.id,
+        'email_sent': email_sent, 'email_error': email_error,
+    }), 200
 
 
 def _send_welcome_email(user: User, token: str):

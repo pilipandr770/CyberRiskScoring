@@ -89,6 +89,16 @@ class ScanResult(Base):
     m3_provisioned_at = Column(DateTime, nullable=True)
     m3_provision_error = Column(Text, nullable=True)
 
+    # Distinct from m3_provisioned: the account can exist ("provisioned")
+    # while no access email was ever actually sent this call — nis2-store
+    # only emails on first account creation, so re-provisioning an existing
+    # account (e.g. re-submitting the decision) silently sent nothing, with
+    # no visible difference from a successful send. Tracked separately so
+    # the agent can tell, and so a manual "resend" action has something to
+    # report against.
+    m3_email_sent = Column(String, nullable=True)  # "yes"/"no"/None (never attempted)
+    m3_email_sent_at = Column(DateTime, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     finished_at = Column(DateTime, nullable=True)
 

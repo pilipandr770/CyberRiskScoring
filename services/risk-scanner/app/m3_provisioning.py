@@ -19,7 +19,7 @@ from app.config import M3_PROVISIONING_API_KEY, M3_PROVISIONING_WEBHOOK_URL
 log = logging.getLogger("m3_provisioning")
 
 
-async def provision(*, assessment, scan) -> dict:
+async def provision(*, assessment, scan, force_resend: bool = False) -> dict:
     if not M3_PROVISIONING_WEBHOOK_URL:
         log.info("M3 provisioning skipped (no webhook configured) for %s", assessment.company_name)
         return {"status": "skipped", "reason": "M3_PROVISIONING_WEBHOOK_URL not configured"}
@@ -43,6 +43,12 @@ async def provision(*, assessment, scan) -> dict:
         "baseline_risk_tier": scan.risk_tier,
         "policy_premium_eur": scan.decision_premium_eur,
         "scan_id": scan.id,
+        # nis2-store only emails on first account creation by default — a
+        # re-provisioning call for an already-existing account (e.g. the
+        # client's original link expired unused, or the decision form was
+        # re-submitted) otherwise silently sends nothing. This is the "send
+        # access email" button's actual signal to send one regardless.
+        "force_resend": force_resend,
     }
 
     try:
@@ -53,7 +59,12 @@ async def provision(*, assessment, scan) -> dict:
                 headers={"X-API-Key": M3_PROVISIONING_API_KEY} if M3_PROVISIONING_API_KEY else {},
             )
             resp.raise_for_status()
-        return {"status": "ok"}
+            data = resp.json()
+        return {
+            "status": "ok",
+            "email_sent": data.get("email_sent", False),
+            "email_error": data.get("email_error"),
+        }
     except Exception as exc:
         log.warning("M3 provisioning failed for %s: %s", assessment.company_name, exc)
         return {"status": "failed", "reason": str(exc)}

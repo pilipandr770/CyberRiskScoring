@@ -16,11 +16,22 @@
 {% if scan.decision_status in ("accepted", "adjusted") %}
 <div class="card">
   <p><strong>Entschieden von:</strong> {{ scan.decided_by }} am {{ scan.decided_at.strftime("%Y-%m-%d %H:%M") if scan.decided_at }}</p>
-  <p><strong>M3-Provisionierung:</strong>
-    {% if scan.m3_provisioned == "yes" %}✅ erfolgreich ({{ scan.m3_provisioned_at.strftime("%Y-%m-%d %H:%M") if scan.m3_provisioned_at }})
+  <p><strong>M3-Konto:</strong>
+    {% if scan.m3_provisioned == "yes" %}✅ eingerichtet ({{ scan.m3_provisioned_at.strftime("%Y-%m-%d %H:%M") if scan.m3_provisioned_at }})
     {% elif scan.m3_provisioned == "failed" %}❌ fehlgeschlagen — {{ scan.m3_provision_error }}
     {% else %}nicht ausgelöst (M3_PROVISIONING_WEBHOOK_URL nicht konfiguriert oder Entscheidung ≠ "accepted"){% endif %}
   </p>
+  <p><strong>Zugangs-E-Mail:</strong>
+    {% if scan.m3_email_sent == "yes" %}✅ gesendet ({{ scan.m3_email_sent_at.strftime("%Y-%m-%d %H:%M") if scan.m3_email_sent_at }})
+    {% elif scan.m3_email_sent == "no" %}⚠️ <strong>nicht gesendet</strong> — Konto bestand bereits, oder SMTP-Fehler; Link ggf. abgelaufen (Gültigkeit 2 Std.)
+    {% else %}noch nicht ausgelöst{% endif %}
+  </p>
+  {% if scan.m3_provisioned == "yes" %}
+  <form method="post" action="/report/{{ scan.id }}/resend-access" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="button secondary">Zugangs-E-Mail (erneut) senden</button>
+  </form>
+  {% endif %}
   {% if scan.decision_notes %}<p><strong>Notizen:</strong> {{ scan.decision_notes }}</p>{% endif %}
 </div>
 {% endif %}
