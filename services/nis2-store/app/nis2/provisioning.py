@@ -164,8 +164,15 @@ def provisioning_webhook():
 
 
 def _send_welcome_email(user: User, token: str):
-    from flask import url_for
-    setup_url = url_for('auth.reset_password', token=token, _external=True)
+    from flask import current_app, url_for
+    # This handler runs inside an inbound webhook call from risk-scanner
+    # (http://nis2-store:5000/...), not a real browser request — so
+    # url_for(_external=True) built the link from THAT request's Host
+    # header ("nis2-store:5000", the internal docker hostname), producing
+    # an email link no client outside the docker network could ever open.
+    # Building it from the app's own configured public base URL instead.
+    base_url = (current_app.config.get('BASE_URL') or '').rstrip('/')
+    setup_url = base_url + url_for('auth.reset_password', token=token)
     msg = Message(
         subject='Ihr Zugang zum NIS2-Compliance-Portal',
         recipients=[user.email],
