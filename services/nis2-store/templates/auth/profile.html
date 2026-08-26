@@ -62,39 +62,18 @@
   </div>
 
   <div class="col-lg-6">
-    {# ── Abonnement ─────────────────────────────────────── #}
+    {# ── Zugang ─────────────────────────────────────────── #}
     <div class="card mb-4">
-      <div class="card-header"><i class="bi bi-credit-card me-2"></i>Abonnement</div>
+      <div class="card-header"><i class="bi bi-shield-check me-2"></i>Zugang</div>
       <div class="card-body">
         <div class="d-flex align-items-center gap-2 mb-3">
           <span class="fs-5 fw-bold">{{ current_user.plan_label }}</span>
-          {% if current_user.subscription_plan == 'trial' %}
-            <span class="badge bg-warning text-dark">Testphase</span>
-          {% elif current_user.subscription_plan == 'basic' %}
-            <span class="badge bg-info">€49/Monat</span>
-          {% elif current_user.subscription_plan == 'professional' %}
-            <span class="badge bg-success">€149/Monat</span>
-          {% endif %}
         </div>
-        {% if current_user.subscription_plan == 'trial' and current_user.trial_ends_at %}
-          <p class="text-muted small mb-3">
-            Testphase endet am <strong>{{ current_user.trial_ends_at.strftime('%d.%m.%Y') }}</strong>.
-          </p>
-        {% endif %}
-        <div class="d-flex gap-2 flex-wrap">
-          <a href="{{ url_for('payments.pricing') }}" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-arrow-up-circle me-1"></i>Tarif wechseln
-          </a>
-          {% if current_user.subscription_plan in ('basic', 'professional', 'enterprise') %}
-            <form method="POST" action="{{ url_for('payments.cancel_subscription') }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-outline-warning btn-sm"
-                      onclick="return confirm('Abonnement wirklich kündigen? Ihr Zugang bleibt bis zum Monatsende aktiv.')">
-                <i class="bi bi-x-circle me-1"></i>Abo kündigen
-              </button>
-            </form>
-          {% endif %}
-        </div>
+        <p class="text-muted small mb-0">
+          Ihr Zugang ist Teil Ihres Cyber-Versicherungsvertrags — es gibt
+          keine separaten Tarife oder Zusatzkosten.
+          <a href="{{ url_for('payments.pricing') }}">Details anzeigen</a>
+        </p>
       </div>
     </div>
 

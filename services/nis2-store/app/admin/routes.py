@@ -34,13 +34,6 @@ def dashboard():
     # ── User stats ────────────────────────────────────────────────
     total_users = User.query.count()
     new_this_month = User.query.filter(User.created_at >= month_ago).count()
-    active_trials = User.query.filter_by(subscription_plan='trial').count()
-    basic_count = User.query.filter_by(subscription_plan='basic').count()
-    professional_count = User.query.filter_by(subscription_plan='professional').count()
-    enterprise_count = User.query.filter_by(subscription_plan='enterprise').count()
-
-    # ── Revenue estimate (MRR) ────────────────────────────────────
-    mrr = basic_count * 49 + professional_count * 149 + enterprise_count * 0
 
     # ── Token usage totals ────────────────────────────────────────
     total_input = db.session.query(func.sum(APIUsageLog.input_tokens)).scalar() or 0
@@ -89,11 +82,6 @@ def dashboard():
         'admin/dashboard.html',
         total_users=total_users,
         new_this_month=new_this_month,
-        active_trials=active_trials,
-        basic_count=basic_count,
-        professional_count=professional_count,
-        enterprise_count=enterprise_count,
-        mrr=mrr,
         total_input=total_input,
         total_output=total_output,
         by_model=by_model,

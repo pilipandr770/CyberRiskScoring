@@ -24,7 +24,7 @@
 
   {# ── User stats ────────────────────────────────────────── #}
   <div class="row g-3 mb-4">
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-3">
       <div class="card text-center h-100 border-0 shadow-sm">
         <div class="card-body py-3">
           <div class="fs-2 fw-bold text-primary">{{ total_users }}</div>
@@ -32,43 +32,11 @@
         </div>
       </div>
     </div>
-    <div class="col-6 col-md-2">
+    <div class="col-6 col-md-3">
       <div class="card text-center h-100 border-0 shadow-sm">
         <div class="card-body py-3">
           <div class="fs-2 fw-bold text-success">{{ new_this_month }}</div>
           <div class="small text-muted">Neu (30 Tage)</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-md-2">
-      <div class="card text-center h-100 border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="fs-2 fw-bold text-warning">{{ active_trials }}</div>
-          <div class="small text-muted">Trial-Nutzer</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-md-2">
-      <div class="card text-center h-100 border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="fs-2 fw-bold text-info">{{ basic_count }}</div>
-          <div class="small text-muted">Basic (€49)</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-md-2">
-      <div class="card text-center h-100 border-0 shadow-sm">
-        <div class="card-body py-3">
-          <div class="fs-2 fw-bold text-success">{{ professional_count }}</div>
-          <div class="small text-muted">Professional (€149)</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-md-2">
-      <div class="card text-center h-100 border-0 shadow-sm border-success">
-        <div class="card-body py-3">
-          <div class="fs-2 fw-bold text-success">€{{ mrr }}</div>
-          <div class="small text-muted">MRR (geschätzt)</div>
         </div>
       </div>
     </div>
@@ -124,7 +92,7 @@
     </div>
 
     {# ── Token usage by endpoint ───────────────────────── #}
-    <div class="col-md-4">
+    <div class="col-md-7">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-header fw-semibold"><i class="bi bi-bar-chart me-2"></i>Verbrauch nach Feature</div>
         <div class="card-body p-0">
@@ -148,31 +116,6 @@
       </div>
     </div>
 
-    {# ── Plan distribution ────────────────────────────── #}
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-header fw-semibold"><i class="bi bi-pie-chart me-2"></i>Plan-Verteilung</div>
-        <div class="card-body">
-          {% set plan_total = total_users if total_users > 0 else 1 %}
-          <div class="mb-2">
-            <div class="d-flex justify-content-between small mb-1"><span>Trial</span><span>{{ active_trials }}</span></div>
-            <div class="progress" style="height:6px"><div class="progress-bar bg-warning" style="width:{{ (active_trials / plan_total * 100)|int }}%"></div></div>
-          </div>
-          <div class="mb-2">
-            <div class="d-flex justify-content-between small mb-1"><span>Basic</span><span>{{ basic_count }}</span></div>
-            <div class="progress" style="height:6px"><div class="progress-bar bg-info" style="width:{{ (basic_count / plan_total * 100)|int }}%"></div></div>
-          </div>
-          <div class="mb-2">
-            <div class="d-flex justify-content-between small mb-1"><span>Professional</span><span>{{ professional_count }}</span></div>
-            <div class="progress" style="height:6px"><div class="progress-bar bg-success" style="width:{{ (professional_count / plan_total * 100)|int }}%"></div></div>
-          </div>
-          <div class="mb-2">
-            <div class="d-flex justify-content-between small mb-1"><span>Enterprise</span><span>{{ enterprise_count }}</span></div>
-            <div class="progress" style="height:6px"><div class="progress-bar bg-primary" style="width:{{ (enterprise_count / plan_total * 100)|int }}%"></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
   {# ── Top users by token usage ──────────────────────────────── #}

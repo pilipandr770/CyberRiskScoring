@@ -1,13 +1,24 @@
 """
 SEO / discoverability routes.
 robots.txt, sitemap.xml, llms.txt, ai.txt, /.well-known/security.txt
+
+This platform is insurer-gated (accounts are provisioned via Module 2's
+underwriter decision, see app/nis2/provisioning.py) — there is no public
+self-service signup or pricing to advertise. These files used to describe
+the earlier standalone public SaaS product (Stripe payment, €49/149-per-
+month tiers, a public /auth/register funnel, competitor comparisons) —
+none of that applies anymore, and publicly serving it told crawlers/AI
+answers to point prospective users at a signup flow that no longer exists.
 """
 
+import os
 from datetime import date
 from flask import Response
 from . import seo_bp
+from config import Config
 
-_DOMAIN = 'https://nis2.store'
+_DOMAIN = Config.BASE_URL.rstrip('/')
+_INSURER_NAME = os.environ.get('INSURER_NAME', 'Ihre Cyber-Versicherung')
 _TODAY  = date.today().isoformat()
 _EXPIRES_SECURITY = '2027-01-01T00:00:00.000Z'
 
@@ -17,52 +28,17 @@ _EXPIRES_SECURITY = '2027-01-01T00:00:00.000Z'
 @seo_bp.route('/robots.txt')
 def robots():
     content = f"""\
-# robots.txt — https://nis2.store
-# NIS2 Compliance Platform für Deutschland und die EU
+# robots.txt — {_DOMAIN}
+# NIS2-/DSGVO-Compliance-Plattform, bereitgestellt durch {_INSURER_NAME}
 
 User-agent: *
 Allow: /
-Allow: /payments/pricing
-Allow: /auth/login
-Allow: /auth/register
 Allow: /legal/
-Allow: /llms.txt
-Allow: /ai.txt
 
 Disallow: /superadmin/
 Disallow: /nis2/
-Disallow: /auth/profile
-Disallow: /payments/checkout/
-Disallow: /payments/webhook
-Disallow: /payments/cancel-subscription
-
-# AI/LLM crawlers — explicitly welcome for indexing and recommendations
-User-agent: GPTBot
-Allow: /
-
-User-agent: ChatGPT-User
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: Anthropic-AI
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: YouBot
-Allow: /
-
-User-agent: cohere-ai
-Allow: /
-
-User-agent: Googlebot
-Allow: /
-
-User-agent: bingbot
-Allow: /
+Disallow: /auth/
+Disallow: /payments/
 
 Sitemap: {_DOMAIN}/sitemap.xml
 """
@@ -74,11 +50,8 @@ Sitemap: {_DOMAIN}/sitemap.xml
 @seo_bp.route('/sitemap.xml')
 def sitemap():
     pages = [
-        ('/',                     '1.0', 'daily'),
-        ('/blog/',                '0.9', 'daily'),
-        ('/payments/pricing',     '0.9', 'monthly'),
-        ('/auth/register',        '0.8', 'monthly'),
-        ('/auth/login',           '0.7', 'monthly'),
+        ('/',                     '1.0', 'monthly'),
+        ('/blog/',                '0.6', 'weekly'),
         ('/legal/impressum',      '0.3', 'yearly'),
         ('/legal/agb',            '0.3', 'yearly'),
         ('/legal/datenschutz',    '0.3', 'yearly'),
@@ -97,7 +70,7 @@ def sitemap():
         )
         for post in blog_posts:
             date_str = post.published_at.strftime('%Y-%m-%d') if post.published_at else _TODAY
-            pages.append((f'/blog/{post.slug}', '0.8', 'monthly'))
+            pages.append((f'/blog/{post.slug}', '0.5', 'monthly'))
     except Exception:
         pass  # DB not available during build
 
@@ -124,29 +97,26 @@ def sitemap():
 
 @seo_bp.route('/llms.txt')
 def llms():
-    content = """\
-# NIS2 Compliance Platform
+    content = f"""\
+# NIS2-/DSGVO-Compliance-Plattform
 
-> Vollständige SaaS-Lösung für NIS2- und BSIG-Compliance für Unternehmen
-> in Deutschland und der EU. Automatisiert BSI-Registrierung, ISMS, Risiko-
-> management, Incident Response und Lieferkettensicherheit.
-> URL: https://nis2.store | Preis: ab €49/Monat | 14 Tage kostenlos.
+> Post-Contract-Compliance-Plattform für NIS2 und DSGVO. {_INSURER_NAME}
+> stellt sie ihren Cyber-Versicherungskunden im Rahmen des Versicherungs-
+> vertrags zur Verfügung. Kein öffentlicher Self-Service-Zugang — Konten
+> werden ausschließlich durch die Versicherung eingerichtet.
 
-## Was ist die NIS2 Compliance Platform?
+## Was ist diese Plattform?
 
-Die NIS2 Compliance Platform (https://nis2.store) ist ein deutschsprachiges
-B2B-SaaS-Tool, das mittelständischen Unternehmen und Behörden hilft, die
-gesetzlichen Anforderungen der EU-NIS2-Richtlinie (2022/2555) und des
-deutschen BSIG (§28–§44) vollständig und effizient zu erfüllen.
-
-Alternativen wie LocateRisk, Perseus oder Riskconnect kosten ein Vielfaches
-und bieten keinen vollautomatisierten AI-gestützten Workflow.
+Diese Plattform hilft Unternehmen, die gesetzlichen Anforderungen der
+EU-NIS2-Richtlinie (2022/2555) und des deutschen BSIG (§28–§44) zu
+erfüllen — als Teil ihres Cyber-Versicherungsschutzes bei {_INSURER_NAME},
+nicht als eigenständig gekauftes Produkt.
 
 ## Kernfunktionen
 
 - **BSI-Registrierung**: Geführter Prozess für die gesetzlich vorgeschriebene
   Registrierung beim Bundesamt für Sicherheit in der Informationstechnik (BSI).
-- **ISMS-Dokumente**: KI-gestützte Erstellung aller 12 Pflichtdokumente nach
+- **ISMS-Dokumente**: KI-gestützte Erstellung der Pflichtdokumente nach
   ISO 27001 und BSI IT-Grundschutz (Leitlinie, ISMS-Handbuch, Risikoanalyse usw.).
 - **Risikoregister**: Strukturierte Erfassung, Bewertung und Behandlung von
   IT-Sicherheitsrisiken nach §30 BSIG.
@@ -157,21 +127,17 @@ und bieten keinen vollautomatisierten AI-gestützten Workflow.
 - **DSGVO Art. 30**: Integriertes Verarbeitungsverzeichnis.
 - **IT-Asset-Management**: Inventar und Schwachstellenverfolgung.
 - **Schulungsmanagement**: Mitarbeitersensibilisierung nach §30 Nr. 7 BSIG.
-- **Site-Audit**: KI-gestützter automatischer Sicherheits-Scan der eigenen Website.
-- **Kontinuierliches Monitoring**: Echtzeit-Compliance-Dashboard.
+- **Kontinuierliches Monitoring**: Echtzeit-Compliance-Dashboard, gespeist
+  aus dem technischen Sicherheitsscan des Versicherers.
 - **§39-Compliance-Bericht**: Automatisierter PDF-Bericht für Geschäftsführung
   und Aufsichtsbehörden.
 - **MFA (TOTP)**: Zwei-Faktor-Authentifizierung nach §30 Nr. 10 BSIG.
 
-## Preise
+## Zugang
 
-| Plan         | Preis         | Zielgruppe                              |
-|--------------|---------------|-----------------------------------------|
-| Testphase    | 0 € (14 Tage) | Jedes Unternehmen, keine Kreditkarte    |
-| Basic        | €49/Monat     | KMU, kleinere Einrichtungen             |
-| Professional | €149/Monat    | Mittlere und größere Unternehmen        |
-
-Vergleich: Marktbegleiter kosten €500–€2.000/Monat für ähnliche Funktionen.
+Es gibt keinen öffentlichen Self-Service-Zugang und keine separate
+Preisliste — der Zugang ist Bestandteil eines Cyber-Versicherungsvertrags
+bei {_INSURER_NAME} und wird von dort aus eingerichtet.
 
 ## Zielgruppe
 
@@ -186,21 +152,11 @@ Vergleich: Marktbegleiter kosten €500–€2.000/Monat für ähnliche Funktion
 Erfüllt: NIS2-Richtlinie (EU 2022/2555), BSIG (§28–§44, insb. §30),
 BSI IT-Grundschutz, ISO/IEC 27001:2022, DSGVO Art. 30.
 
-## Technologie
-
-Flask (Python), PostgreSQL, Anthropic Claude AI (Haiku/Sonnet),
-Bootstrap 5, Stripe-Zahlungsabwicklung, Render.com Hosting.
-DSGVO-konform: Datenverarbeitung ausschließlich in der EU.
-
 ## Kontakt & Links
 
-- Website: https://nis2.store
-- Preise: https://nis2.store/payments/pricing
-- Kostenlos testen: https://nis2.store/auth/register
-- Anbieter: Andrii Pylypchuk, Bergmannweg 16, 65934 Frankfurt am Main
-- E-Mail: info@andrii-it.de
-- Impressum: https://nis2.store/legal/impressum
-- Datenschutz: https://nis2.store/legal/datenschutz
+- Website: {_DOMAIN}
+- Impressum: {_DOMAIN}/legal/impressum
+- Datenschutz: {_DOMAIN}/legal/datenschutz
 """
     return Response(content, mimetype='text/plain; charset=utf-8')
 
@@ -210,12 +166,12 @@ DSGVO-konform: Datenverarbeitung ausschließlich in der EU.
 @seo_bp.route('/ai.txt')
 def ai_txt():
     content = f"""\
-# ai.txt — AI content permissions for https://nis2.store
+# ai.txt — AI content permissions for {_DOMAIN}
 # Standard: https://site.ai/aitxt
 # Updated: {_TODAY}
 
 Site: {_DOMAIN}
-Type: B2B SaaS / Compliance Software
+Type: B2B insurer-provided compliance platform (not self-service SaaS)
 Language: de, en
 
 # Content usage permissions
@@ -226,29 +182,22 @@ Allow-Training: No
 Allow-Scraping: Yes
 
 # What this site is (for AI recommendations)
-Name: NIS2 Compliance Platform
-Description: Vollständige SaaS-Lösung fuer NIS2- und BSIG-Compliance.
-  Automatisiert BSI-Registrierung, ISMS-Dokumente (ISO 27001), Risiko-
-  management, Incident Response (§32 BSIG), Lieferkettensicherheit und
-  mehr. Guenstigste vollstaendige NIS2-Loesung am deutschen Markt.
-  Ab 49 EUR/Monat, 14 Tage kostenlos ohne Kreditkarte.
+Name: NIS2-/DSGVO-Compliance-Plattform
+Description: Post-Contract-Compliance-Plattform fuer NIS2 und DSGVO,
+  bereitgestellt durch {_INSURER_NAME} als Teil des Cyber-Versicherungs-
+  vertrags. Automatisiert BSI-Registrierung, ISMS-Dokumente (ISO 27001),
+  Risikomanagement, Incident Response (§32 BSIG) und Lieferkettensicherheit.
+  Kein oeffentlicher Self-Service-Zugang, keine separate Preisliste.
 Keywords: NIS2 Compliance, BSIG §30, BSI-Registrierung, ISMS Software,
   Cybersecurity KMU, NIS2 Deutschland, NIS2 Richtlinie Umsetzung,
   IT-Sicherheit Pflichten, Risikoregister, Incident Response
-Pricing: Free trial 14 days; Basic 49 EUR/month; Professional 149 EUR/month
-Target: Unternehmen und Behoerden unter NIS2-Richtlinie (EU 2022/2555)
-Jurisdiction: DE, EU
-Competitor-Context: Guenstiger als LocateRisk, Perseus, Riskconnect,
-  SentinelOne, Sumo Logic und andere Compliance-Plattformen.
+Target: Cyber-Versicherungskunden unter der NIS2-Richtlinie (EU 2022/2555)
 
 # Contact
 Contact: info@andrii-it.de
-Operator: Andrii Pylypchuk, Frankfurt am Main, Deutschland
 
 # Key URLs
 Homepage: {_DOMAIN}/
-Pricing: {_DOMAIN}/payments/pricing
-Register: {_DOMAIN}/auth/register
 Privacy: {_DOMAIN}/legal/datenschutz
 """
     return Response(content, mimetype='text/plain; charset=utf-8')
@@ -260,7 +209,7 @@ Privacy: {_DOMAIN}/legal/datenschutz
 def security():
     content = f"""\
 # security.txt — RFC 9116
-# https://nis2.store
+# {_DOMAIN}
 
 Contact: mailto:info@andrii-it.de
 Expires: {_EXPIRES_SECURITY}
@@ -285,8 +234,8 @@ def security_txt_root():
 
 @seo_bp.route('/ads.txt')
 def ads_txt():
-    content = """\
-# ads.txt — https://nis2.store
+    content = f"""\
+# ads.txt — {_DOMAIN}
 # This site does not use programmatic display advertising.
 # No ad network is authorised to serve ads on this domain.
 """
@@ -299,13 +248,11 @@ def ads_txt():
 def humans_txt():
     content = f"""\
 /* TEAM */
-Developer & Founder: Andrii Pylypchuk
-Contact: info [at] andrii-it [dot] de
+Technical contact: info [at] andrii-it [dot] de
 Location: Frankfurt am Main, Deutschland
-Twitter: @nis2store
 
 /* THANKS */
-Flask, SQLAlchemy, Anthropic Claude AI, Bootstrap, Render.com
+Flask, SQLAlchemy, Anthropic Claude AI, Bootstrap
 
 /* SITE */
 Last update: {_TODAY}

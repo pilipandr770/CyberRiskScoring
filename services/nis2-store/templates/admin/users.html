@@ -22,8 +22,7 @@
             <tr>
               <th>#</th>
               <th>Name / E-Mail</th>
-              <th>Plan</th>
-              <th>Stripe Customer</th>
+              <th>Zugang</th>
               <th>Registriert</th>
               <th class="text-end">Tokens</th>
               <th class="text-end">Calls</th>
@@ -39,26 +38,7 @@
                 <div class="fw-semibold small">{{ u.display_name }}</div>
                 <div class="text-muted" style="font-size:.75rem">{{ u.email }}</div>
               </td>
-              <td>
-                {% if u.subscription_plan == 'trial' %}
-                  <span class="badge bg-warning text-dark">Trial</span>
-                {% elif u.subscription_plan == 'basic' %}
-                  <span class="badge bg-info">Basic €49</span>
-                {% elif u.subscription_plan == 'professional' %}
-                  <span class="badge bg-success">Pro €149</span>
-                {% elif u.subscription_plan == 'enterprise' %}
-                  <span class="badge bg-primary">Enterprise</span>
-                {% else %}
-                  <span class="badge bg-secondary">{{ u.subscription_plan }}</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if u.stripe_customer_id %}
-                  <span class="text-muted" style="font-size:.7rem">{{ u.stripe_customer_id }}</span>
-                {% else %}
-                  <span class="text-muted small">—</span>
-                {% endif %}
-              </td>
+              <td><span class="badge bg-secondary">{{ u.plan_label }}</span></td>
               <td class="small text-muted">{{ u.created_at.strftime('%d.%m.%Y') if u.created_at else '—' }}</td>
               <td class="text-end small fw-semibold">
                 {% if udata.tokens %}
@@ -81,7 +61,7 @@
               </td>
             </tr>
             {% else %}
-            <tr><td colspan="8" class="text-center text-muted py-4">Noch keine Nutzer registriert.</td></tr>
+            <tr><td colspan="7" class="text-center text-muted py-4">Noch keine Nutzer registriert.</td></tr>
             {% endfor %}
           </tbody>
         </table>

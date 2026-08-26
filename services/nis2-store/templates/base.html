@@ -125,14 +125,6 @@
     .score-ring.partial { background: #fef3c7; color: #92400e; }
     .score-ring.poor    { background: #fee2e2; color: #991b1b; }
 
-    /* ── Trial banner ─────────────────────────────────── */
-    .trial-banner {
-      background: linear-gradient(135deg, #fef3c7, #fde68a);
-      border-left: 4px solid #f59e0b;
-      padding: .65rem 1rem;
-      font-size: .85rem;
-    }
-
     /* ── Mobile ───────────────────────────────────────── */
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); transition: transform .25s; }
@@ -273,14 +265,6 @@
       <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
     </div>
     <div class="d-flex align-items-center gap-2">
-      {% if current_user.subscription_plan == 'trial' %}
-        <span class="badge bg-warning text-dark d-none d-md-inline">
-          <i class="bi bi-clock"></i> Testphase
-        </span>
-        <a href="{{ url_for('payments.pricing') }}" class="btn btn-sm btn-primary">
-          Jetzt upgraden
-        </a>
-      {% endif %}
       {% if current_user.is_admin %}
         <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm btn-outline-danger" title="Admin">
           <i class="bi bi-shield-lock"></i>
@@ -303,7 +287,7 @@
           </li>
           <li>
             <a class="dropdown-item" href="{{ url_for('payments.pricing') }}">
-              <i class="bi bi-credit-card me-2"></i>Abonnement
+              <i class="bi bi-shield-check me-2"></i>Über Ihren Zugang
             </a>
           </li>
           <li><hr class="dropdown-divider"></li>
@@ -316,16 +300,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Trial banner -->
-  {% if current_user.subscription_plan == 'trial' and current_user.trial_ends_at %}
-  <div class="trial-banner px-4">
-    <i class="bi bi-info-circle me-1"></i>
-    Ihr kostenloser Testzeitraum endet am
-    <strong>{{ current_user.trial_ends_at.strftime('%d.%m.%Y') }}</strong>.
-    <a href="{{ url_for('payments.pricing') }}" class="ms-2 fw-600">Jetzt upgraden →</a>
-  </div>
-  {% endif %}
 
   <!-- Flash messages -->
   <div class="px-4 pt-3">
